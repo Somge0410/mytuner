@@ -1,15 +1,20 @@
 #include "tuner.h"
 
+#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <string>
 #include <sstream>
 #include <vector>
-
+#include "zobrist.h"
+#include "board.h"
+#include "evaluation.h"
+#include "tuner.h"
 using namespace std;
 using namespace Tuner;
 
 int main(int argc, char** argv) {
+	Zobrist::initialize_keys();
     vector<DataSource> sources;
     {
         string csv_path = "sources.csv";
@@ -17,10 +22,14 @@ int main(int argc, char** argv) {
         {
             csv_path = argv[1];
         }
+
+        cout << "Current working directory: " << filesystem::current_path().string() << endl;
+
         ifstream csv(csv_path);
         if(!csv)
         {
             cout << "Unable to open data source list " << csv_path << endl;
+            return -1;
         }
 
         while(!csv.eof())

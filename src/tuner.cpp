@@ -1,8 +1,9 @@
 #include "tuner.h"
 #include "config.h"
 #include "threadpool.h"
-#include "external/chess.hpp"
-
+#include "TuneEval.h"
+#include "base.h"
+#include "bitboard_masks.h"
 #include <array>
 #include <chrono>
 #include <cmath>
@@ -38,7 +39,6 @@ struct Entry
     vector<CoefficientEntry> coefficients;
     tune_t wdl;
     bool white_to_move;
-    //tune_t initial_eval;
     tune_t additional_score;
 #if TAPERED
     int32_t phase;
@@ -46,13 +46,15 @@ struct Entry
 #endif
 };
 
-static const array<WdlMarker, 4> markers
+static const array<WdlMarker, 7> markers
 {
     WdlMarker{"1.0", 1},
-
     WdlMarker{"1-0", 1},
     WdlMarker{"1/2-1/2", 0.5},
-    WdlMarker{"0-1", 0}
+    WdlMarker{"0-1", 0},
+    WdlMarker{"|White",1},
+	WdlMarker{"|Black",0},
+	WdlMarker{"|Draw",0.5}
 };
 
 static tune_t get_fen_wdl(const string& original_fen, const bool original_white_to_move, const bool white_to_move, const bool side_to_move_wdl)
@@ -167,75 +169,25 @@ static int32_t get_phase(const string& fen)
     auto stop = false;
     for(const char ch : fen)
     {
-        if(stop)
-        {
-            break;
-        }
+        if(stop) break;
 
         switch (ch)
         {
-        case 'n':
-        case 'N':
+        case 'n': case 'N':
+        case 'b': case 'B':
             phase += 1;
             break;
-        case 'b':
-        case 'B':
-            phase += 1;
-            break;
-        case 'r':
-        case 'R':
+        case 'r': case 'R':
             phase += 2;
             break;
-        case 'q':
-        case 'Q':
+        case 'q': case 'Q':
             phase += 4;
-            break;
-        case 'p':
-        case '/':
-        case '1':
-        case '2':
-        case '3':
-        case '4':
-        case '5':
-        case '6':
-        case '7':
-        case '8':
             break;
         case ' ':
             stop = true;
             break;
         }
     }
-    return phase;
-}
-
-static int32_t get_phase(const chess::Board& board)
-{
-    int32_t phase = 0;
-
-    for(uint8_t square_num = 0; square_num < 64; ++square_num)
-    {
-        const auto square = static_cast<chess::Square>(square_num);
-        const auto piece = board.at(square);
-        switch (piece)
-        {
-        case chess::Piece(chess::Piece::WHITEKNIGHT):
-        case chess::Piece(chess::Piece::WHITEBISHOP):
-        case chess::Piece(chess::Piece::BLACKKNIGHT):
-        case chess::Piece(chess::Piece::BLACKBISHOP):
-            phase += 1;
-            break;
-        case chess::Piece(chess::Piece::WHITEROOK):
-        case chess::Piece(chess::Piece::BLACKROOK):
-            phase += 2;
-            break;
-        case chess::Piece(chess::Piece::WHITEQUEEN):
-        case chess::Piece(chess::Piece::BLACKQUEEN):
-            phase += 4;
-            break;
-        }
-    }
-
     return phase;
 }
 
@@ -254,29 +206,19 @@ static void print_statistics(const parameters_t& parameters, const vector<Entry>
     for(auto& entry : entries)
     {
         if(entry.wdl == 1)
-        {
             wins[entry.white_to_move]++;
-        }
         else if(entry.wdl == 0.5)
-        {
             draws[entry.white_to_move]++;
-        }
         else if (entry.wdl == 0.0)
-        {
             losses[entry.white_to_move]++;
-        }
+        
         total[entry.white_to_move]++;
         wdls[entry.white_to_move] += entry.wdl;
 
         if(entry.coefficients.size() < min_parameters)
-        {
             min_parameters = entry.coefficients.size();
-        }
-
         if (entry.coefficients.size() > max_parameters)
-        {
             max_parameters = entry.coefficients.size();
-        }
 
         total_parameters += entry.coefficients.size();
     }
@@ -298,218 +240,7 @@ static void print_statistics(const parameters_t& parameters, const vector<Entry>
     cout << "Parameters min: " << min_parameters << endl;
     cout << "Parameters max: " << max_parameters << endl;
     cout << "Parameters avg: " << avg_parameters << endl;
-
     cout << endl;
-}
-
-constexpr tune_t inf = 1 << 20;
-struct PvEntry
-{
-    array<chess::Move, 64> moves{};
-    int32_t length = 0;
-};
-using pv_table_t = array<PvEntry, 64>;
-
-static int32_t get_piece_value(const chess::Piece piece)
-{
-    switch (piece)
-    {
-    case chess::Piece(chess::Piece::WHITEPAWN):
-    case chess::Piece(chess::Piece::BLACKPAWN):
-        return 100;
-    case chess::Piece(chess::Piece::WHITEKNIGHT):
-    case chess::Piece(chess::Piece::BLACKKNIGHT):
-        return 300;
-    case chess::Piece(chess::Piece::WHITEBISHOP):
-    case chess::Piece(chess::Piece::BLACKBISHOP):
-        return 300;
-    case chess::Piece(chess::Piece::WHITEROOK):
-    case chess::Piece(chess::Piece::BLACKROOK):
-        return 500;
-    case chess::Piece(chess::Piece::WHITEQUEEN):
-    case chess::Piece(chess::Piece::BLACKQUEEN):
-        return 900;
-    case chess::Piece(chess::Piece::WHITEKING):
-    case chess::Piece(chess::Piece::BLACKKING):
-    case chess::Piece(chess::Piece::NONE):
-        return 0;
-        //throw std::runtime_error("Invalid piece for value");
-    }
-}
-
-static int32_t mvv_lva(const chess::Board& board, const chess::Move move)
-{
-    const auto from = move.from();
-    const auto to = move.to();
-    const auto piece = board.at(from);
-    chess::Piece takes;
-    const auto type = move.typeOf();
-    if(type == chess::Move::ENPASSANT)
-    {
-        takes = board.sideToMove() == chess::Color::WHITE ? chess::Piece::BLACKPAWN : chess::Piece::WHITEPAWN;
-    }
-    else
-    {
-        takes = board.at(to);
-    }
-
-    auto score = get_piece_value(takes);
-    score <<= 16;
-    score -= get_piece_value(piece);
-    return score;
-}
-
-static tune_t quiescence(chess::Board& board, const parameters_t& parameters, pv_table_t& pv_table, tune_t alpha, tune_t beta, const int32_t ply)
-{
-    pv_table[ply].length = 0;
-
-    EvalResult eval_result;
-    if constexpr (TuneEval::supports_external_chess_eval)
-    {
-        eval_result = TuneEval::get_external_eval_result(board);
-    }
-    else
-    {
-        auto fen = board.getFen();
-        eval_result = TuneEval::get_fen_eval_result(fen);
-    }
-
-    Entry entry;
-    entry.white_to_move = board.sideToMove() == chess::Color::WHITE;
-#if TAPERED
-    entry.endgame_scale = eval_result.endgame_scale;
-#endif
-    get_coefficient_entries(eval_result.coefficients, entry.coefficients, static_cast<int32_t>(parameters.size()));
-#if TAPERED
-    entry.phase = get_phase(board);
-#endif
-    entry.additional_score = 0;
-    tune_t eval = linear_eval(entry, parameters);
-    if(!entry.white_to_move)
-    {
-        eval = -eval;
-    }
-
-    if (eval >= beta)
-    {
-        return eval;
-    }
-
-    if (eval > alpha)
-    {
-        alpha = eval;
-    }
-
-    chess::Movelist moves;
-    chess::movegen::legalmoves<chess::movegen::MoveGenType::CAPTURE>(moves, board);
-    array<int32_t, 64> move_scores;
-    for (int32_t move_index = 0; move_index < moves.size(); move_index++)
-    {
-        move_scores[move_index] = mvv_lva(board, moves[move_index]);
-    }
-
-    if(moves.size() == 0)
-    {
-        return alpha;
-    }
-
-    tune_t best_score = -inf;
-    auto best_move = chess::Move(chess::Move::NO_MOVE);
-    //for (const auto& move : movelist) {
-    for(int32_t move_index = 0; move_index < moves.size(); move_index++)
-    {
-        int32_t best_move_score = 0;
-        int32_t best_move_index = 0;
-        for(auto i = move_index; i < moves.size(); i++)
-        {
-            if(move_scores[i] > best_move_score)
-            {
-                best_move_score = move_scores[i];
-                best_move_index = i;
-            }
-        }
-
-        const auto move = moves[best_move_index];
-        moves[best_move_index] = moves[move_index];
-        move_scores[best_move_index] = move_scores[move_index];
-
-        board.makeMove(move);
-
-        const auto child_score = -quiescence(board, parameters, pv_table, -beta, -alpha, ply + 1);
-        if(child_score > best_score)
-        {
-            best_score = child_score;
-            best_move = move;
-            if (child_score > alpha)
-            {
-                alpha = child_score;
-                if(child_score >= beta)
-                {
-                    board.unmakeMove(move);
-                    break;
-                }
-
-                auto& this_ply = pv_table[ply];
-                auto& next_ply = pv_table[ply + 1];
-                this_ply.moves[0] = move;
-                this_ply.length = next_ply.length + 1;
-                for (int32_t nextPlyIndex = 0; nextPlyIndex < next_ply.length; nextPlyIndex++)
-                {
-                    this_ply.moves[nextPlyIndex + 1] = next_ply.moves[nextPlyIndex];
-                }
-            }
-        }
-
-        board.unmakeMove(move);
-    }
-
-    return best_score;
-}
-
-string cleanup_fen(const string& initial_fen)
-{
-    int space_count = 0;
-    size_t pos = 0;
-    for (size_t i = 0; i < initial_fen.size(); ++i) {
-        if (initial_fen[i] == ' ') {
-            ++space_count;
-        }
-        if (space_count == 4) {
-            pos = i;
-            break;
-        }
-    }
-    const auto clean_fen = initial_fen.substr(0, pos);
-    return clean_fen;
-}
-
-chess::Board quiescence_root(const parameters_t& parameters, chess::Board board)
-{
-    pv_table_t pv_table {};
-    auto score = quiescence(board, parameters, pv_table, -inf, inf, 0);
-    if(board.sideToMove() == chess::Color::BLACK)
-    {
-        score = -score;
-    }
-    if constexpr (print_data_entries)
-    {
-        if (pv_table[0].length > 0)
-        {
-            cout << " PV:";
-            for (int32_t pv_index = 0; pv_index < pv_table[0].length; pv_index++)
-            {
-                cout << " " << pv_table[0].moves[pv_index];
-            }
-        }
-        cout << " QS: " << score;
-    }
-
-    for (int32_t pv_index = 0; pv_index < pv_table[0].length; pv_index++)
-    {
-        board.makeMove(pv_table[0].moves[pv_index]);
-    }
-
-    return board;
 }
 
 static void parse_fen(const bool side_to_move_wdl, const parameters_t& parameters, vector<Entry>& entries, const string& original_fen)
@@ -519,44 +250,18 @@ static void parse_fen(const bool side_to_move_wdl, const parameters_t& parameter
         cout << original_fen;
     }
 
-    //string fen;
-    const auto clean_fen = cleanup_fen(original_fen);
-    chess::Board board = chess::Board(clean_fen);
-
-    if constexpr (TuneEval::filter_in_check)
-    {
-        if (board.inCheck())
-            return;
-    }
-
-    if constexpr (TuneEval::enable_qsearch)
-    {
-        board = quiescence_root(parameters, board);
-    }
-
-    EvalResult eval_result;
-    if constexpr (TuneEval::supports_external_chess_eval)
-    {
-        eval_result = TuneEval::get_external_eval_result(board);
-    }
-    else
-    {
-        auto fen = board.getFen();
-        eval_result = TuneEval::get_fen_eval_result(fen);
-    }
+    // Direkt FEN verwenden (keine Quiescence nötig bei ruhigen Positionen)
+    EvalResult eval_result = TuneEval::get_fen_eval_result(original_fen);
 
     Entry entry;
-    //entry.white_to_move = get_fen_color_to_move(fen);
-    entry.white_to_move = board.sideToMove() == chess::Color::WHITE;
+    entry.white_to_move = get_fen_color_to_move(original_fen);
 #if TAPERED
     entry.endgame_scale = eval_result.endgame_scale;
 #endif
-    const bool original_white_to_move = get_fen_color_to_move(original_fen);
-    //cout << (entry.white_to_move ? "w" : "b") << " ";
-    entry.wdl = get_fen_wdl(original_fen, original_white_to_move, entry.white_to_move, side_to_move_wdl);
+    entry.wdl = get_fen_wdl(original_fen, entry.white_to_move, entry.white_to_move, side_to_move_wdl);
     get_coefficient_entries(eval_result.coefficients, entry.coefficients, static_cast<int32_t>(parameters.size()));
 #if TAPERED
-    entry.phase = get_phase(board);
+    entry.phase = get_phase(original_fen);
 #endif
     entry.additional_score = 0;
     if constexpr (TuneEval::includes_additional_score)
@@ -566,7 +271,8 @@ static void parse_fen(const bool side_to_move_wdl, const parameters_t& parameter
         {
             cout << " Eval: " << score << endl;
         }
-        entry.additional_score = eval_result.score - score;
+        entry.additional_score = eval_result.additional_score;
+
     }
 
     entries.push_back(entry);
@@ -749,7 +455,6 @@ static tune_t find_optimal_k(ThreadPool& thread_pool, const vector<Entry>& entri
 }
 
 static void update_single_gradient(parameters_t& gradient, const Entry& entry, const parameters_t& params, tune_t K) {
-
     const tune_t eval = linear_eval(entry, params);
     const tune_t sig = sigmoid(K, eval);
     const tune_t res = (entry.wdl - sig) * sig * (1 - sig);
@@ -828,15 +533,6 @@ void Tuner::run(const std::vector<DataSource>& sources)
 
     vector<Entry> entries;
 
-    // Debug entry
-    //const string debug_fen = "rnb1kbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQK1NR w KQkq - 0 1; 1.0";
-    //Entry debug_entry;
-    //debug_entry.wdl = get_fen_wdl(debug_fen);
-    //debug_entry.white_to_move = get_fen_color_to_move(debug_fen);
-    //get_coefficient_entries(debug_fen, debug_entry.coefficients);
-    //debug_entry.initial_eval = linear_eval(debug_entry, parameters);
-    //entries.push_back(debug_entry);
-
     vector<string> fens;
     for (const auto& source : sources)
     {
@@ -888,7 +584,7 @@ void Tuner::run(const std::vector<DataSource>& sources)
     parameters_t momentum(parameters.size(), 0);
     parameters_t velocity(parameters.size(), 0);
 #endif
-    for (int32_t epoch = 1; epoch < max_tune_epoch; epoch++)
+    for ( int32_t epoch = 1; epoch < max_tune_epoch; epoch++)
     {
 #if TAPERED
         parameters_t gradient(parameters.size(), pair_t{});
@@ -918,8 +614,8 @@ void Tuner::run(const std::vector<DataSource>& sources)
 #endif
             
         }
-
-        if (epoch % 100 == 0)
+        //TuneEval::normalize_pst(parameters);
+        if (epoch % 250 == 0)
         {
             const auto elapsed_ms = duration_cast<milliseconds>(high_resolution_clock::now() - loop_start).count();
             const auto epochs_per_second = epoch * 1000.0 / elapsed_ms;

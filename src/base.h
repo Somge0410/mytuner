@@ -5,23 +5,23 @@
 #include <cstdint>
 #include <vector>
 
-//#define TAPERED 1
+#define TAPERED 1
 
 using tune_t = double;
 
 #if TAPERED
 using pair_t = std::array<tune_t, 2>;
 using parameters_t = std::vector<pair_t>;
+using coefficients_t = std::vector<int16_t>;  // <-- BLEIBT als vector<int16_t> für TAPERED!
 #else
 using parameters_t = std::vector<tune_t>;
-#endif
-
 using coefficients_t = std::vector<int16_t>;
+#endif
 
 struct EvalResult
 {
-    coefficients_t coefficients;
-    tune_t score;
+    coefficients_t coefficients;  // <-- ZURÜCK zu "coefficients"!
+    tune_t additional_score;
     tune_t endgame_scale = 1;
 };
 

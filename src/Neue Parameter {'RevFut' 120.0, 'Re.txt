@@ -1,0 +1,1 @@
+Neue Parameter: {'RevFut': 120.0, 'RevFutDepth': 2.0, 'FutilityMarginD1': 700.0, 'FutilityMarginD2': 200.0, 'DeltaMargin': 400.0, 'MaxQuietPly': 14.0, 'LmrMinDepth': 5.0, 'LmrMinMoves': 2.0, 'LmrRedAm': -2, 'NmpReduction': 3.0, 'AspirationWindowInitial': 62.0, 'AspirationWindowMultiplier': 1.75, 'TimeAllocationDivisor': 42.0, 'MaxTimeFraction': 1.5}

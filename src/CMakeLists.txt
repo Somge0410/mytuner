@@ -7,6 +7,37 @@ set(THREADS_PREFER_PTHREAD_FLAG ON)
 
 find_package(Threads REQUIRED)
 
-add_executable(tuner "main.cpp" "tuner.cpp" "threadpool.cpp" "engines/toy.cpp" "engines/toy_tapered.cpp" "engines/fourku.cpp" "engines/fourkdotcpp.cpp")
+add_executable(tuner 
+    "main.cpp" 
+    "tuner.cpp" 
+    "threadpool.cpp" 
+    "engines/TuneEval.cpp"
+     
+    "engines/board.cpp"
+    "engines/zobrist.cpp"
+    "engines/evaluation.cpp"  # <-- diese Zeile fehlt
+ "engines/adjustable_parameters.h" )
 
 target_link_libraries(tuner PRIVATE Threads::Threads)
+
+target_include_directories(tuner PRIVATE 
+    "${CMAKE_CURRENT_SOURCE_DIR}"
+    "${CMAKE_CURRENT_SOURCE_DIR}/engine"
+    "${CMAKE_CURRENT_SOURCE_DIR}/engines"
+)
+
+if(MSVC)
+    target_compile_options(tuner PRIVATE
+        $<$<CONFIG:Release>:/O2 /GL /DNDEBUG /arch:AVX2>
+    )
+    target_link_options(tuner PRIVATE
+        $<$<CONFIG:Release>:/LTCG>
+    )
+else()
+    target_compile_options(tuner PRIVATE
+        $<$<CONFIG:Release>:-O3 -march=native -DNDEBUG -flto>
+    )
+    target_link_options(tuner PRIVATE
+        $<$<CONFIG:Release>:-flto>
+    )
+endif()
