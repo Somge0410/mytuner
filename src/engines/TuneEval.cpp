@@ -81,7 +81,7 @@ void TuneEval::print_parameters(const parameters_t& parameters) {
     const double eg_scale = 100.0 / parameters[PAWN][eg];
 
     auto mg_int = [&](int idx) { return static_cast<int>(std::round(parameters[idx][mg] * mg_scale)); };
-    auto eg_int = [&](int idx) { return static_cast<int>(std::round(parameters[idx][eg] * eg_scale)); };
+    auto eg_int = [&](int idx) { return static_cast<int>(std::round(parameters[idx][eg] * mg_scale)); };
 
     auto print_entry = [&](int idx, const std::string& comment) {
         std::cout << "\t{" << mg_int(idx) << "," << eg_int(idx) << "},\t  // " << comment << '\n';
