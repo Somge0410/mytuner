@@ -1,3 +1,5 @@
+#include "evaluation.h"
+
 EvaluationResult EvalWeights[PARAM_COUNT] = {
         {100,100},        // PAWN
         {496,464},        // KNIGHT
