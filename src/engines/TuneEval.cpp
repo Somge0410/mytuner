@@ -76,7 +76,7 @@ EvalResult TuneEval::get_fen_eval_result(const std::string& fen) {
 void TuneEval::print_parameters(const parameters_t& parameters) {
     const int mg = static_cast<int>(PhaseStages::Midgame);
     const int eg = static_cast<int>(PhaseStages::Endgame);
-
+	normalize_pst(const_cast<parameters_t&>(parameters));  // Normalize PST values before printing
     const double mg_scale = 100.0 / parameters[PAWN][mg];
     const double eg_scale = 100.0 / parameters[PAWN][eg];
 
