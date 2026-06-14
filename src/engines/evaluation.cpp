@@ -22,7 +22,7 @@ int evaluate(const Board& board, Trace* trace, uint8_t terms_mask) {
 	EvalContext ctx(board);
 
 	eval_material<isTracing>(score, board, trace);
-	//eval_positional<isTracing>(score, board, trace);
+	eval_positional<isTracing>(score, board, trace);
 	eval_pawns<isTracing>(score, ctx, trace);
 	eval_king_safety<isTracing>(score, ctx, trace);
 	eval_mobility<isTracing>(score, ctx, trace);

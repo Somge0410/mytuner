@@ -53,7 +53,7 @@ void Board::parse_fen(const std::string& fen){
     while (std::getline(ss,item,' ')){
         fen_parts.push_back(item);
     }
-    if (fen_parts.size()==6){
+    if (fen_parts.size()>=6){
         
     parse_fen_pieces(fen_parts[0]);
      parse_fen_turn(fen_parts[1]);

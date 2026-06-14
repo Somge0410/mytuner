@@ -5,7 +5,10 @@
 #include <vector>
 
 //Adjustable parameters for engine:
-constexpr size_t MAX_MEMORY_TT_MB = 512; // in MB
+#ifndef DEFAULT_TT_MB
+    #define DEFAULT_TT_MB 128  // fallback if not set by CMake
+#endif
+constexpr size_t MAX_MEMORY_TT_MB = DEFAULT_TT_MB; // in MB
 
 //color and piece constants
 enum class Color: uint8_t { WHITE, BLACK, NONE };
@@ -14,6 +17,7 @@ inline const uint8_t WHITE_KING_CASTLE = 1U << 3;
 inline const uint8_t WHITE_QUEEN_CASTLE = 1U << 2;
 inline const uint8_t BLACK_KING_CASTLE = 1U << 1;
 inline const uint8_t BLACK_QUEEN_CASTLE = 1U << 0;
+inline const uint8_t NO_SQUARE = 64;
 
 
 //FEN-constants
@@ -31,6 +35,7 @@ constexpr int INFINITE_DEPTH = 64;
 constexpr int INFINITE_TIME_MS = 3600000;
 constexpr int DEFAULT_TIME_MS = 20000;
 constexpr int NEG_SEE_SCORE = -100000;
+constexpr int HISTORY_MAX = 16384;
 
 // constants for evaluation
 const int MATE_SCORE=32000;
@@ -53,3 +58,4 @@ constexpr uint64_t EXTENDED_CENTER_MASK = 1ULL << 26 | 1ULL << 29 |
                                       1ULL << 34 | 1ULL << 37 |
                                       1ULL << 42 | 1ULL << 43 | 1ULL << 44 | 1ULL << 45 |
 	                                  1ULL << 18 | 1ULL << 19| 1ULL << 20 | 1ULL << 21;
+constexpr uint64_t FOUR_CORNER_MASK = (1ULL << 0) | (1ULL << 7) | (1ULL << 56) | (1ULL << 63);

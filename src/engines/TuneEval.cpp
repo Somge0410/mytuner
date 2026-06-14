@@ -61,7 +61,7 @@ EvalResult TuneEval::get_external_eval_result(const Board& board) {
     evaluate<true>(board, &trace);
 
     result.coefficients.resize(PARAM_COUNT);
-    for(int i=0;i<=PARAM_COUNT;i++){
+    for(int i=0;i<PARAM_COUNT;i++){
         result.coefficients[i] = trace.counts[i];
 	}
 
