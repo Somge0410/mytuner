@@ -31,8 +31,8 @@ public:
     constexpr static bool enable_qsearch = false;  // No quiescence search
     constexpr static bool filter_in_check = false;  // Skip positions in check
     
-    constexpr static double initial_learning_rate = 100;
-    constexpr static int32_t learning_rate_drop_interval = 20;
+    constexpr static double initial_learning_rate = 0.1;
+    constexpr static int32_t learning_rate_drop_interval = 500;
     constexpr static double learning_rate_drop_ratio = 0.8;  // No LR drops
     
     constexpr static int32_t data_load_print_interval = 10000;
