@@ -27,13 +27,13 @@ public:
     // Tuning configuration
     constexpr static bool retune_from_zero = false;  // Start with current values
     constexpr static double preferred_k = 0;  // Auto-determine K
-    constexpr static int32_t max_epoch = 7000;  // Maximum epochs
+    constexpr static int32_t max_epoch = 10000;  // Maximum epochs
     constexpr static bool enable_qsearch = false;  // No quiescence search
     constexpr static bool filter_in_check = false;  // Skip positions in check
     
-    constexpr static double initial_learning_rate = 10;
-    constexpr static int32_t learning_rate_drop_interval = 100;
-    constexpr static double learning_rate_drop_ratio = 0.7;  // No LR drops
+    constexpr static double initial_learning_rate = 100;
+    constexpr static int32_t learning_rate_drop_interval = 20;
+    constexpr static double learning_rate_drop_ratio = 0.8;  // No LR drops
     
     constexpr static int32_t data_load_print_interval = 10000;
 

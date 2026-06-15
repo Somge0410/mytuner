@@ -622,7 +622,7 @@ void Tuner::run(const std::vector<DataSource>& sources)
             const tune_t error = get_average_error(thread_pool, entries, parameters, K);
             print_elapsed(start);
             cout << "Epoch " << epoch << " (" << epochs_per_second << " eps), error " << std::setprecision(17)<<error << ", LR " << learning_rate << endl;
-            if(epoch % 2000==0) TuneEval::print_parameters(parameters);
+            if(epoch % 1000==0) TuneEval::print_parameters(parameters);
         }
 
         if(epoch % TuneEval::learning_rate_drop_interval == 0)
