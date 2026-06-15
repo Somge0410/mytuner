@@ -151,9 +151,10 @@ enum EvalParam {
 	BISHOP_OUTPOST_WITH_OPPOSITE_BISHOP,
 	KNIGHT_OUTPOST_NO_OPPOSITE_BISHOP,
 	KNIGHT_OUTPOST_WITH_OPPOSITE_BISHOP,
-	PARAM_COUNT
+	PARAM_COUNT,
+	PARAM_COUNT1
 };
-extern EvaluationResult EvalWeights[PARAM_COUNT];
+extern EvaluationResult EvalWeights[PARAM_COUNT1];
 
 struct Trace { 
 	int counts[PARAM_COUNT]= {0}; 
@@ -161,7 +162,7 @@ struct Trace {
 		counts[param] += count;
 	}
 };	
-static int get_trace_eval(Trace* trace, const EvaluationResult weights[PARAM_COUNT],int game_phase) {
+static int get_trace_eval(Trace* trace, const EvaluationResult weights[PARAM_COUNT1],int game_phase) {
 	EvaluationResult eval = {0,0};
 	for (int i = 0; i < PARAM_COUNT; i++) {
 		eval += weights[i] *trace->counts[i] ;
