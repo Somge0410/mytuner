@@ -2,408 +2,395 @@
 #include "pst.h"
 
 EvaluationResult EvalWeights[PARAM_COUNT1] = {
-        {100, 100},        // PAWN
-        { 340,255 },        // KNIGHT
-        { 280,242 },        // BISHOP
-        { 334,416 },        // ROOK
-        { 782,889 },       // QUEEN
-
-        // Positional weights
-        // PAWN Values
-        { MG_PST[0][0], EG_PST[0][0] },    // PAWN_PST_START
-        { MG_PST[0][1], EG_PST[0][1] },    // PAWN_PST_START+1
-        { MG_PST[0][2], EG_PST[0][2] },    // PAWN_PST_START+2
-        { MG_PST[0][3], EG_PST[0][3] },    // PAWN_PST_START+3
-        { MG_PST[0][4], EG_PST[0][4] },    // PAWN_PST_START+4
-        { MG_PST[0][5], EG_PST[0][5] },    // PAWN_PST_START+5
-        { MG_PST[0][6], EG_PST[0][6] },    // PAWN_PST_START+6
-        { MG_PST[0][7], EG_PST[0][7] },    // PAWN_PST_START+7
-        { MG_PST[0][8], EG_PST[0][8] },    // PAWN_PST_START+8
-        { MG_PST[0][9], EG_PST[0][9] },    // PAWN_PST_START+9
-        { MG_PST[0][10], EG_PST[0][10] },  // PAWN_PST_START+10
-        { MG_PST[0][11], EG_PST[0][11] },  // PAWN_PST_START+11
-        { MG_PST[0][12], EG_PST[0][12] },  // PAWN_PST_START+12
-        { MG_PST[0][13], EG_PST[0][13] },  // PAWN_PST_START+13
-        { MG_PST[0][14], EG_PST[0][14] },  // PAWN_PST_START+14
-        { MG_PST[0][15], EG_PST[0][15] },  // PAWN_PST_START+15
-        { MG_PST[0][16], EG_PST[0][16] },  // PAWN_PST_START+16
-        { MG_PST[0][17], EG_PST[0][17] },  // PAWN_PST_START+17
-        { MG_PST[0][18], EG_PST[0][18] },  // PAWN_PST_START+18
-        { MG_PST[0][19], EG_PST[0][19] },  // PAWN_PST_START+19
-        { MG_PST[0][20], EG_PST[0][20] },  // PAWN_PST_START+20
-        { MG_PST[0][21], EG_PST[0][21] },  // PAWN_PST_START+21
-        { MG_PST[0][22], EG_PST[0][22] },  // PAWN_PST_START+22
-        { MG_PST[0][23], EG_PST[0][23] },  // PAWN_PST_START+23
-        { MG_PST[0][24], EG_PST[0][24] },  // PAWN_PST_START+24
-        { MG_PST[0][25], EG_PST[0][25] },  // PAWN_PST_START+25
-        { MG_PST[0][26], EG_PST[0][26] },  // PAWN_PST_START+26
-        { MG_PST[0][27], EG_PST[0][27] },  // PAWN_PST_START+27
-        { MG_PST[0][28], EG_PST[0][28] },  // PAWN_PST_START+28
-        { MG_PST[0][29], EG_PST[0][29] },  // PAWN_PST_START+29
-        { MG_PST[0][30], EG_PST[0][30] },  // PAWN_PST_START+30
-        { MG_PST[0][31], EG_PST[0][31] },  // PAWN_PST_START+31
-        { MG_PST[0][32], EG_PST[0][32] },  // PAWN_PST_START+32
-        { MG_PST[0][33], EG_PST[0][33] },  // PAWN_PST_START+33
-        { MG_PST[0][34], EG_PST[0][34] },  // PAWN_PST_START+34
-        { MG_PST[0][35], EG_PST[0][35] },  // PAWN_PST_START+35
-        { MG_PST[0][36], EG_PST[0][36] },  // PAWN_PST_START+36
-        { MG_PST[0][37], EG_PST[0][37] },  // PAWN_PST_START+37
-        { MG_PST[0][38], EG_PST[0][38] },  // PAWN_PST_START+38
-        { MG_PST[0][39], EG_PST[0][39] },  // PAWN_PST_START+39
-        { MG_PST[0][40], EG_PST[0][40] },  // PAWN_PST_START+40
-        { MG_PST[0][41], EG_PST[0][41] },  // PAWN_PST_START+41
-        { MG_PST[0][42], EG_PST[0][42] },  // PAWN_PST_START+42
-        { MG_PST[0][43], EG_PST[0][43] },  // PAWN_PST_START+43
-        { MG_PST[0][44], EG_PST[0][44] },  // PAWN_PST_START+44
-        { MG_PST[0][45], EG_PST[0][45] },  // PAWN_PST_START+45
-        { MG_PST[0][46], EG_PST[0][46] },  // PAWN_PST_START+46
-        { MG_PST[0][47], EG_PST[0][47] },  // PAWN_PST_START+47
-        { MG_PST[0][48], EG_PST[0][48] },  // PAWN_PST_START+48
-        { MG_PST[0][49], EG_PST[0][49] },  // PAWN_PST_START+49
-        { MG_PST[0][50], EG_PST[0][50] },  // PAWN_PST_START+50
-        { MG_PST[0][51], EG_PST[0][51] },  // PAWN_PST_START+51
-        { MG_PST[0][52], EG_PST[0][52] },  // PAWN_PST_START+52
-        { MG_PST[0][53], EG_PST[0][53] },  // PAWN_PST_START+53
-        { MG_PST[0][54], EG_PST[0][54] },  // PAWN_PST_START+54
-        { MG_PST[0][55], EG_PST[0][55] },  // PAWN_PST_START+55
-        { MG_PST[0][56], EG_PST[0][56] },  // PAWN_PST_START+56
-        { MG_PST[0][57], EG_PST[0][57] },  // PAWN_PST_START+57
-        { MG_PST[0][58], EG_PST[0][58] },  // PAWN_PST_START+58
-        { MG_PST[0][59], EG_PST[0][59] },  // PAWN_PST_START+59
-        { MG_PST[0][60], EG_PST[0][60] },  // PAWN_PST_START+60
-        { MG_PST[0][61], EG_PST[0][61] },  // PAWN_PST_START+61
-        { MG_PST[0][62], EG_PST[0][62] },  // PAWN_PST_START+62
-        { MG_PST[0][63], EG_PST[0][63] },  // PAWN_PST_START+63
-
-        // KNIGHT Values
-        { MG_PST[1][0], EG_PST[1][0] },    // KNIGHT_PST_START
-        { MG_PST[1][1], EG_PST[1][1] },    // KNIGHT_PST_START+1
-        { MG_PST[1][2], EG_PST[1][2] },    // KNIGHT_PST_START+2
-        { MG_PST[1][3], EG_PST[1][3] },    // KNIGHT_PST_START+3
-        { MG_PST[1][4], EG_PST[1][4] },    // KNIGHT_PST_START+4
-        { MG_PST[1][5], EG_PST[1][5] },    // KNIGHT_PST_START+5
-        { MG_PST[1][6], EG_PST[1][6] },    // KNIGHT_PST_START+6
-        { MG_PST[1][7], EG_PST[1][7] },    // KNIGHT_PST_START+7
-        { MG_PST[1][8], EG_PST[1][8] },    // KNIGHT_PST_START+8
-        { MG_PST[1][9], EG_PST[1][9] },    // KNIGHT_PST_START+9
-        { MG_PST[1][10], EG_PST[1][10] },  // KNIGHT_PST_START+10
-        { MG_PST[1][11], EG_PST[1][11] },  // KNIGHT_PST_START+11
-        { MG_PST[1][12], EG_PST[1][12] },  // KNIGHT_PST_START+12
-        { MG_PST[1][13], EG_PST[1][13] },  // KNIGHT_PST_START+13
-        { MG_PST[1][14], EG_PST[1][14] },  // KNIGHT_PST_START+14
-        { MG_PST[1][15], EG_PST[1][15] },  // KNIGHT_PST_START+15
-        { MG_PST[1][16], EG_PST[1][16] },  // KNIGHT_PST_START+16
-        { MG_PST[1][17], EG_PST[1][17] },  // KNIGHT_PST_START+17
-        { MG_PST[1][18], EG_PST[1][18] },  // KNIGHT_PST_START+18
-        { MG_PST[1][19], EG_PST[1][19] },  // KNIGHT_PST_START+19
-        { MG_PST[1][20], EG_PST[1][20] },  // KNIGHT_PST_START+20
-        { MG_PST[1][21], EG_PST[1][21] },  // KNIGHT_PST_START+21
-        { MG_PST[1][22], EG_PST[1][22] },  // KNIGHT_PST_START+22
-        { MG_PST[1][23], EG_PST[1][23] },  // KNIGHT_PST_START+23
-        { MG_PST[1][24], EG_PST[1][24] },  // KNIGHT_PST_START+24
-        { MG_PST[1][25], EG_PST[1][25] },  // KNIGHT_PST_START+25
-        { MG_PST[1][26], EG_PST[1][26] },  // KNIGHT_PST_START+26
-        { MG_PST[1][27], EG_PST[1][27] },  // KNIGHT_PST_START+27
-        { MG_PST[1][28], EG_PST[1][28] },  // KNIGHT_PST_START+28
-        { MG_PST[1][29], EG_PST[1][29] },  // KNIGHT_PST_START+29
-        { MG_PST[1][30], EG_PST[1][30] },  // KNIGHT_PST_START+30
-        { MG_PST[1][31], EG_PST[1][31] },  // KNIGHT_PST_START+31
-        { MG_PST[1][32], EG_PST[1][32] },  // KNIGHT_PST_START+32
-        { MG_PST[1][33], EG_PST[1][33] },  // KNIGHT_PST_START+33
-        { MG_PST[1][34], EG_PST[1][34] },  // KNIGHT_PST_START+34
-        { MG_PST[1][35], EG_PST[1][35] },  // KNIGHT_PST_START+35
-        { MG_PST[1][36], EG_PST[1][36] },  // KNIGHT_PST_START+36
-        { MG_PST[1][37], EG_PST[1][37] },  // KNIGHT_PST_START+37
-        { MG_PST[1][38], EG_PST[1][38] },  // KNIGHT_PST_START+38
-        { MG_PST[1][39], EG_PST[1][39] },  // KNIGHT_PST_START+39
-        { MG_PST[1][40], EG_PST[1][40] },  // KNIGHT_PST_START+40
-        { MG_PST[1][41], EG_PST[1][41] },  // KNIGHT_PST_START+41
-        { MG_PST[1][42], EG_PST[1][42] },  // KNIGHT_PST_START+42
-        { MG_PST[1][43], EG_PST[1][43] },  // KNIGHT_PST_START+43
-        { MG_PST[1][44], EG_PST[1][44] },  // KNIGHT_PST_START+44
-        { MG_PST[1][45], EG_PST[1][45] },  // KNIGHT_PST_START+45
-        { MG_PST[1][46], EG_PST[1][46] },  // KNIGHT_PST_START+46
-        { MG_PST[1][47], EG_PST[1][47] },  // KNIGHT_PST_START+47
-        { MG_PST[1][48], EG_PST[1][48] },  // KNIGHT_PST_START+48
-        { MG_PST[1][49], EG_PST[1][49] },  // KNIGHT_PST_START+49
-        { MG_PST[1][50], EG_PST[1][50] },  // KNIGHT_PST_START+50
-        { MG_PST[1][51], EG_PST[1][51] },  // KNIGHT_PST_START+51
-        { MG_PST[1][52], EG_PST[1][52] },  // KNIGHT_PST_START+52
-        { MG_PST[1][53], EG_PST[1][53] },  // KNIGHT_PST_START+53
-        { MG_PST[1][54], EG_PST[1][54] },  // KNIGHT_PST_START+54
-        { MG_PST[1][55], EG_PST[1][55] },  // KNIGHT_PST_START+55
-        { MG_PST[1][56], EG_PST[1][56] },  // KNIGHT_PST_START+56
-        { MG_PST[1][57], EG_PST[1][57] },  // KNIGHT_PST_START+57
-        { MG_PST[1][58], EG_PST[1][58] },  // KNIGHT_PST_START+58
-        { MG_PST[1][59], EG_PST[1][59] },  // KNIGHT_PST_START+59
-        { MG_PST[1][60], EG_PST[1][60] },  // KNIGHT_PST_START+60
-        { MG_PST[1][61], EG_PST[1][61] },  // KNIGHT_PST_START+61
-        { MG_PST[1][62], EG_PST[1][62] },  // KNIGHT_PST_START+62
-        { MG_PST[1][63], EG_PST[1][63] },  // KNIGHT_PST_START+63
-
-        // BISHOP Values
-        { MG_PST[2][0], EG_PST[2][0] },    // BISHOP_PST_START
-        { MG_PST[2][1], EG_PST[2][1] },    // BISHOP_PST_START+1
-        { MG_PST[2][2], EG_PST[2][2] },    // BISHOP_PST_START+2
-        { MG_PST[2][3], EG_PST[2][3] },    // BISHOP_PST_START+3
-        { MG_PST[2][4], EG_PST[2][4] },    // BISHOP_PST_START+4
-        { MG_PST[2][5], EG_PST[2][5] },    // BISHOP_PST_START+5
-        { MG_PST[2][6], EG_PST[2][6] },    // BISHOP_PST_START+6
-        { MG_PST[2][7], EG_PST[2][7] },    // BISHOP_PST_START+7
-        { MG_PST[2][8], EG_PST[2][8] },    // BISHOP_PST_START+8
-        { MG_PST[2][9], EG_PST[2][9] },    // BISHOP_PST_START+9
-        { MG_PST[2][10], EG_PST[2][10] },  // BISHOP_PST_START+10
-        { MG_PST[2][11], EG_PST[2][11] },  // BISHOP_PST_START+11
-        { MG_PST[2][12], EG_PST[2][12] },  // BISHOP_PST_START+12
-        { MG_PST[2][13], EG_PST[2][13] },  // BISHOP_PST_START+13
-        { MG_PST[2][14], EG_PST[2][14] },  // BISHOP_PST_START+14
-        { MG_PST[2][15], EG_PST[2][15] },  // BISHOP_PST_START+15
-        { MG_PST[2][16], EG_PST[2][16] },  // BISHOP_PST_START+16
-        { MG_PST[2][17], EG_PST[2][17] },  // BISHOP_PST_START+17
-        { MG_PST[2][18], EG_PST[2][18] },  // BISHOP_PST_START+18
-        { MG_PST[2][19], EG_PST[2][19] },  // BISHOP_PST_START+19
-        { MG_PST[2][20], EG_PST[2][20] },  // BISHOP_PST_START+20
-        { MG_PST[2][21], EG_PST[2][21] },  // BISHOP_PST_START+21
-        { MG_PST[2][22], EG_PST[2][22] },  // BISHOP_PST_START+22
-        { MG_PST[2][23], EG_PST[2][23] },  // BISHOP_PST_START+23
-        { MG_PST[2][24], EG_PST[2][24] },  // BISHOP_PST_START+24
-        { MG_PST[2][25], EG_PST[2][25] },  // BISHOP_PST_START+25
-        { MG_PST[2][26], EG_PST[2][26] },  // BISHOP_PST_START+26
-        { MG_PST[2][27], EG_PST[2][27] },  // BISHOP_PST_START+27
-        { MG_PST[2][28], EG_PST[2][28] },  // BISHOP_PST_START+28
-        { MG_PST[2][29], EG_PST[2][29] },  // BISHOP_PST_START+29
-        { MG_PST[2][30], EG_PST[2][30] },  // BISHOP_PST_START+30
-        { MG_PST[2][31], EG_PST[2][31] },  // BISHOP_PST_START+31
-        { MG_PST[2][32], EG_PST[2][32] },  // BISHOP_PST_START+32
-        { MG_PST[2][33], EG_PST[2][33] },  // BISHOP_PST_START+33
-        { MG_PST[2][34], EG_PST[2][34] },  // BISHOP_PST_START+34
-        { MG_PST[2][35], EG_PST[2][35] },  // BISHOP_PST_START+35
-        { MG_PST[2][36], EG_PST[2][36] },  // BISHOP_PST_START+36
-        { MG_PST[2][37], EG_PST[2][37] },  // BISHOP_PST_START+37
-        { MG_PST[2][38], EG_PST[2][38] },  // BISHOP_PST_START+38
-        { MG_PST[2][39], EG_PST[2][39] },  // BISHOP_PST_START+39
-        { MG_PST[2][40], EG_PST[2][40] },  // BISHOP_PST_START+40
-        { MG_PST[2][41], EG_PST[2][41] },  // BISHOP_PST_START+41
-        { MG_PST[2][42], EG_PST[2][42] },  // BISHOP_PST_START+42
-        { MG_PST[2][43], EG_PST[2][43] },  // BISHOP_PST_START+43
-        { MG_PST[2][44], EG_PST[2][44] },  // BISHOP_PST_START+44
-        { MG_PST[2][45], EG_PST[2][45] },  // BISHOP_PST_START+45
-        { MG_PST[2][46], EG_PST[2][46] },  // BISHOP_PST_START+46
-        { MG_PST[2][47], EG_PST[2][47] },  // BISHOP_PST_START+47
-        { MG_PST[2][48], EG_PST[2][48] },  // BISHOP_PST_START+48
-        { MG_PST[2][49], EG_PST[2][49] },  // BISHOP_PST_START+49
-        { MG_PST[2][50], EG_PST[2][50] },  // BISHOP_PST_START+50
-        { MG_PST[2][51], EG_PST[2][51] },  // BISHOP_PST_START+51
-        { MG_PST[2][52], EG_PST[2][52] },  // BISHOP_PST_START+52
-        { MG_PST[2][53], EG_PST[2][53] },  // BISHOP_PST_START+53
-        { MG_PST[2][54], EG_PST[2][54] },  // BISHOP_PST_START+54
-        { MG_PST[2][55], EG_PST[2][55] },  // BISHOP_PST_START+55
-        { MG_PST[2][56], EG_PST[2][56] },  // BISHOP_PST_START+56
-        { MG_PST[2][57], EG_PST[2][57] },  // BISHOP_PST_START+57
-        { MG_PST[2][58], EG_PST[2][58] },  // BISHOP_PST_START+58
-        { MG_PST[2][59], EG_PST[2][59] },  // BISHOP_PST_START+59
-        { MG_PST[2][60], EG_PST[2][60] },  // BISHOP_PST_START+60
-        { MG_PST[2][61], EG_PST[2][61] },  // BISHOP_PST_START+61
-        { MG_PST[2][62], EG_PST[2][62] },  // BISHOP_PST_START+62
-        { MG_PST[2][63], EG_PST[2][63] },  // BISHOP_PST_START+63
-
-        // ROOK Values
-        { MG_PST[3][0], EG_PST[3][0] },    // ROOK_PST_START
-        { MG_PST[3][1], EG_PST[3][1] },    // ROOK_PST_START+1
-        { MG_PST[3][2], EG_PST[3][2] },    // ROOK_PST_START+2
-        { MG_PST[3][3], EG_PST[3][3] },    // ROOK_PST_START+3
-        { MG_PST[3][4], EG_PST[3][4] },    // ROOK_PST_START+4
-        { MG_PST[3][5], EG_PST[3][5] },    // ROOK_PST_START+5
-        { MG_PST[3][6], EG_PST[3][6] },    // ROOK_PST_START+6
-        { MG_PST[3][7], EG_PST[3][7] },    // ROOK_PST_START+7
-        { MG_PST[3][8], EG_PST[3][8] },    // ROOK_PST_START+8
-        { MG_PST[3][9], EG_PST[3][9] },    // ROOK_PST_START+9
-        { MG_PST[3][10], EG_PST[3][10] },  // ROOK_PST_START+10
-        { MG_PST[3][11], EG_PST[3][11] },  // ROOK_PST_START+11
-        { MG_PST[3][12], EG_PST[3][12] },  // ROOK_PST_START+12
-        { MG_PST[3][13], EG_PST[3][13] },  // ROOK_PST_START+13
-        { MG_PST[3][14], EG_PST[3][14] },  // ROOK_PST_START+14
-        { MG_PST[3][15], EG_PST[3][15] },  // ROOK_PST_START+15
-        { MG_PST[3][16], EG_PST[3][16] },  // ROOK_PST_START+16
-        { MG_PST[3][17], EG_PST[3][17] },  // ROOK_PST_START+17
-        { MG_PST[3][18], EG_PST[3][18] },  // ROOK_PST_START+18
-        { MG_PST[3][19], EG_PST[3][19] },  // ROOK_PST_START+19
-        { MG_PST[3][20], EG_PST[3][20] },  // ROOK_PST_START+20
-        { MG_PST[3][21], EG_PST[3][21] },  // ROOK_PST_START+21
-        { MG_PST[3][22], EG_PST[3][22] },  // ROOK_PST_START+22
-        { MG_PST[3][23], EG_PST[3][23] },  // ROOK_PST_START+23
-        { MG_PST[3][24], EG_PST[3][24] },  // ROOK_PST_START+24
-        { MG_PST[3][25], EG_PST[3][25] },  // ROOK_PST_START+25
-        { MG_PST[3][26], EG_PST[3][26] },  // ROOK_PST_START+26
-        { MG_PST[3][27], EG_PST[3][27] },  // ROOK_PST_START+27
-        { MG_PST[3][28], EG_PST[3][28] },  // ROOK_PST_START+28
-        { MG_PST[3][29], EG_PST[3][29] },  // ROOK_PST_START+29
-        { MG_PST[3][30], EG_PST[3][30] },  // ROOK_PST_START+30
-        { MG_PST[3][31], EG_PST[3][31] },  // ROOK_PST_START+31
-        { MG_PST[3][32], EG_PST[3][32] },  // ROOK_PST_START+32
-        { MG_PST[3][33], EG_PST[3][33] },  // ROOK_PST_START+33
-        { MG_PST[3][34], EG_PST[3][34] },  // ROOK_PST_START+34
-        { MG_PST[3][35], EG_PST[3][35] },  // ROOK_PST_START+35
-        { MG_PST[3][36], EG_PST[3][36] },  // ROOK_PST_START+36
-        { MG_PST[3][37], EG_PST[3][37] },  // ROOK_PST_START+37
-        { MG_PST[3][38], EG_PST[3][38] },  // ROOK_PST_START+38
-        { MG_PST[3][39], EG_PST[3][39] },  // ROOK_PST_START+39
-        { MG_PST[3][40], EG_PST[3][40] },  // ROOK_PST_START+40
-        { MG_PST[3][41], EG_PST[3][41] },  // ROOK_PST_START+41
-        { MG_PST[3][42], EG_PST[3][42] },  // ROOK_PST_START+42
-        { MG_PST[3][43], EG_PST[3][43] },  // ROOK_PST_START+43
-        { MG_PST[3][44], EG_PST[3][44] },  // ROOK_PST_START+44
-        { MG_PST[3][45], EG_PST[3][45] },  // ROOK_PST_START+45
-        { MG_PST[3][46], EG_PST[3][46] },  // ROOK_PST_START+46
-        { MG_PST[3][47], EG_PST[3][47] },  // ROOK_PST_START+47
-        { MG_PST[3][48], EG_PST[3][48] },  // ROOK_PST_START+48
-        { MG_PST[3][49], EG_PST[3][49] },  // ROOK_PST_START+49
-        { MG_PST[3][50], EG_PST[3][50] },  // ROOK_PST_START+50
-        { MG_PST[3][51], EG_PST[3][51] },  // ROOK_PST_START+51
-        { MG_PST[3][52], EG_PST[3][52] },  // ROOK_PST_START+52
-        { MG_PST[3][53], EG_PST[3][53] },  // ROOK_PST_START+53
-        { MG_PST[3][54], EG_PST[3][54] },  // ROOK_PST_START+54
-        { MG_PST[3][55], EG_PST[3][55] },  // ROOK_PST_START+55
-        { MG_PST[3][56], EG_PST[3][56] },  // ROOK_PST_START+56
-        { MG_PST[3][57], EG_PST[3][57] },  // ROOK_PST_START+57
-        { MG_PST[3][58], EG_PST[3][58] },  // ROOK_PST_START+58
-        { MG_PST[3][59], EG_PST[3][59] },  // ROOK_PST_START+59
-        { MG_PST[3][60], EG_PST[3][60] },  // ROOK_PST_START+60
-        { MG_PST[3][61], EG_PST[3][61] },  // ROOK_PST_START+61
-        { MG_PST[3][62], EG_PST[3][62] },  // ROOK_PST_START+62
-        { MG_PST[3][63], EG_PST[3][63] },  // ROOK_PST_START+63
-
-        // QUEEN Values
-        { MG_PST[4][0], EG_PST[4][0] },    // QUEEN_PST_START
-        { MG_PST[4][1], EG_PST[4][1] },    // QUEEN_PST_START+1
-        { MG_PST[4][2], EG_PST[4][2] },    // QUEEN_PST_START+2
-        { MG_PST[4][3], EG_PST[4][3] },    // QUEEN_PST_START+3
-        { MG_PST[4][4], EG_PST[4][4] },    // QUEEN_PST_START+4
-        { MG_PST[4][5], EG_PST[4][5] },    // QUEEN_PST_START+5
-        { MG_PST[4][6], EG_PST[4][6] },    // QUEEN_PST_START+6
-        { MG_PST[4][7], EG_PST[4][7] },    // QUEEN_PST_START+7
-        { MG_PST[4][8], EG_PST[4][8] },    // QUEEN_PST_START+8
-        { MG_PST[4][9], EG_PST[4][9] },    // QUEEN_PST_START+9
-        { MG_PST[4][10], EG_PST[4][10] },  // QUEEN_PST_START+10
-        { MG_PST[4][11], EG_PST[4][11] },  // QUEEN_PST_START+11
-        { MG_PST[4][12], EG_PST[4][12] },  // QUEEN_PST_START+12
-        { MG_PST[4][13], EG_PST[4][13] },  // QUEEN_PST_START+13
-        { MG_PST[4][14], EG_PST[4][14] },  // QUEEN_PST_START+14
-        { MG_PST[4][15], EG_PST[4][15] },  // QUEEN_PST_START+15
-        { MG_PST[4][16], EG_PST[4][16] },  // QUEEN_PST_START+16
-        { MG_PST[4][17], EG_PST[4][17] },  // QUEEN_PST_START+17
-        { MG_PST[4][18], EG_PST[4][18] },  // QUEEN_PST_START+18
-        { MG_PST[4][19], EG_PST[4][19] },  // QUEEN_PST_START+19
-        { MG_PST[4][20], EG_PST[4][20] },  // QUEEN_PST_START+20
-        { MG_PST[4][21], EG_PST[4][21] },  // QUEEN_PST_START+21
-        { MG_PST[4][22], EG_PST[4][22] },  // QUEEN_PST_START+22
-        { MG_PST[4][23], EG_PST[4][23] },  // QUEEN_PST_START+23
-        { MG_PST[4][24], EG_PST[4][24] },  // QUEEN_PST_START+24
-        { MG_PST[4][25], EG_PST[4][25] },  // QUEEN_PST_START+25
-        { MG_PST[4][26], EG_PST[4][26] },  // QUEEN_PST_START+26
-        { MG_PST[4][27], EG_PST[4][27] },  // QUEEN_PST_START+27
-        { MG_PST[4][28], EG_PST[4][28] },  // QUEEN_PST_START+28
-        { MG_PST[4][29], EG_PST[4][29] },  // QUEEN_PST_START+29
-        { MG_PST[4][30], EG_PST[4][30] },  // QUEEN_PST_START+30
-        { MG_PST[4][31], EG_PST[4][31] },  // QUEEN_PST_START+31
-        { MG_PST[4][32], EG_PST[4][32] },  // QUEEN_PST_START+32
-        { MG_PST[4][33], EG_PST[4][33] },  // QUEEN_PST_START+33
-        { MG_PST[4][34], EG_PST[4][34] },  // QUEEN_PST_START+34
-        { MG_PST[4][35], EG_PST[4][35] },  // QUEEN_PST_START+35
-        { MG_PST[4][36], EG_PST[4][36] },  // QUEEN_PST_START+36
-        { MG_PST[4][37], EG_PST[4][37] },  // QUEEN_PST_START+37
-        { MG_PST[4][38], EG_PST[4][38] },  // QUEEN_PST_START+38
-        { MG_PST[4][39], EG_PST[4][39] },  // QUEEN_PST_START+39
-        { MG_PST[4][40], EG_PST[4][40] },  // QUEEN_PST_START+40
-        { MG_PST[4][41], EG_PST[4][41] },  // QUEEN_PST_START+41
-        { MG_PST[4][42], EG_PST[4][42] },  // QUEEN_PST_START+42
-        { MG_PST[4][43], EG_PST[4][43] },  // QUEEN_PST_START+43
-        { MG_PST[4][44], EG_PST[4][44] },  // QUEEN_PST_START+44
-        { MG_PST[4][45], EG_PST[4][45] },  // QUEEN_PST_START+45
-        { MG_PST[4][46], EG_PST[4][46] },  // QUEEN_PST_START+46
-        { MG_PST[4][47], EG_PST[4][47] },  // QUEEN_PST_START+47
-        { MG_PST[4][48], EG_PST[4][48] },  // QUEEN_PST_START+48
-        { MG_PST[4][49], EG_PST[4][49] },  // QUEEN_PST_START+49
-        { MG_PST[4][50], EG_PST[4][50] },  // QUEEN_PST_START+50
-        { MG_PST[4][51], EG_PST[4][51] },  // QUEEN_PST_START+51
-        { MG_PST[4][52], EG_PST[4][52] },  // QUEEN_PST_START+52
-        { MG_PST[4][53], EG_PST[4][53] },  // QUEEN_PST_START+53
-        { MG_PST[4][54], EG_PST[4][54] },  // QUEEN_PST_START+54
-        { MG_PST[4][55], EG_PST[4][55] },  // QUEEN_PST_START+55
-        { MG_PST[4][56], EG_PST[4][56] },  // QUEEN_PST_START+56
-        { MG_PST[4][57], EG_PST[4][57] },  // QUEEN_PST_START+57
-        { MG_PST[4][58], EG_PST[4][58] },  // QUEEN_PST_START+58
-        { MG_PST[4][59], EG_PST[4][59] },  // QUEEN_PST_START+59
-        { MG_PST[4][60], EG_PST[4][60] },  // QUEEN_PST_START+60
-        { MG_PST[4][61], EG_PST[4][61] },  // QUEEN_PST_START+61
-        { MG_PST[4][62], EG_PST[4][62] },  // QUEEN_PST_START+62
-        { MG_PST[4][63], EG_PST[4][63] },  // QUEEN_PST_START+63
-
-        // KING Values
-        { MG_PST[5][0], EG_PST[5][0] },    // KING_PST_START
-        { MG_PST[5][1], EG_PST[5][1] },    // KING_PST_START+1
-        { MG_PST[5][2], EG_PST[5][2] },    // KING_PST_START+2
-        { MG_PST[5][3], EG_PST[5][3] },    // KING_PST_START+3
-        { MG_PST[5][4], EG_PST[5][4] },    // KING_PST_START+4
-        { MG_PST[5][5], EG_PST[5][5] },    // KING_PST_START+5
-        { MG_PST[5][6], EG_PST[5][6] },    // KING_PST_START+6
-        { MG_PST[5][7], EG_PST[5][7] },    // KING_PST_START+7
-        { MG_PST[5][8], EG_PST[5][8] },    // KING_PST_START+8
-        { MG_PST[5][9], EG_PST[5][9] },    // KING_PST_START+9
-        { MG_PST[5][10], EG_PST[5][10] },  // KING_PST_START+10
-        { MG_PST[5][11], EG_PST[5][11] },  // KING_PST_START+11
-        { MG_PST[5][12], EG_PST[5][12] },  // KING_PST_START+12
-        { MG_PST[5][13], EG_PST[5][13] },  // KING_PST_START+13
-        { MG_PST[5][14], EG_PST[5][14] },  // KING_PST_START+14
-        { MG_PST[5][15], EG_PST[5][15] },  // KING_PST_START+15
-        { MG_PST[5][16], EG_PST[5][16] },  // KING_PST_START+16
-        { MG_PST[5][17], EG_PST[5][17] },  // KING_PST_START+17
-        { MG_PST[5][18], EG_PST[5][18] },  // KING_PST_START+18
-        { MG_PST[5][19], EG_PST[5][19] },  // KING_PST_START+19
-        { MG_PST[5][20], EG_PST[5][20] },  // KING_PST_START+20
-        { MG_PST[5][21], EG_PST[5][21] },  // KING_PST_START+21
-        { MG_PST[5][22], EG_PST[5][22] },  // KING_PST_START+22
-        { MG_PST[5][23], EG_PST[5][23] },  // KING_PST_START+23
-        { MG_PST[5][24], EG_PST[5][24] },  // KING_PST_START+24
-        { MG_PST[5][25], EG_PST[5][25] },  // KING_PST_START+25
-        { MG_PST[5][26], EG_PST[5][26] },  // KING_PST_START+26
-        { MG_PST[5][27], EG_PST[5][27] },  // KING_PST_START+27
-        { MG_PST[5][28], EG_PST[5][28] },  // KING_PST_START+28
-        { MG_PST[5][29], EG_PST[5][29] },  // KING_PST_START+29
-        { MG_PST[5][30], EG_PST[5][30] },  // KING_PST_START+30
-        { MG_PST[5][31], EG_PST[5][31] },  // KING_PST_START+31
-        { MG_PST[5][32], EG_PST[5][32] },  // KING_PST_START+32
-        { MG_PST[5][33], EG_PST[5][33] },  // KING_PST_START+33
-        { MG_PST[5][34], EG_PST[5][34] },  // KING_PST_START+34
-        { MG_PST[5][35], EG_PST[5][35] },  // KING_PST_START+35
-        { MG_PST[5][36], EG_PST[5][36] },  // KING_PST_START+36
-        { MG_PST[5][37], EG_PST[5][37] },  // KING_PST_START+37
-        { MG_PST[5][38], EG_PST[5][38] },  // KING_PST_START+38
-        { MG_PST[5][39], EG_PST[5][39] },  // KING_PST_START+39
-        { MG_PST[5][40], EG_PST[5][40] },  // KING_PST_START+40
-        { MG_PST[5][41], EG_PST[5][41] },  // KING_PST_START+41
-        { MG_PST[5][42], EG_PST[5][42] },  // KING_PST_START+42
-        { MG_PST[5][43], EG_PST[5][43] },  // KING_PST_START+43
-        { MG_PST[5][44], EG_PST[5][44] },  // KING_PST_START+44
-        { MG_PST[5][45], EG_PST[5][45] },  // KING_PST_START+45
-        { MG_PST[5][46], EG_PST[5][46] },  // KING_PST_START+46
-        { MG_PST[5][47], EG_PST[5][47] },  // KING_PST_START+47
-        { MG_PST[5][48], EG_PST[5][48] },  // KING_PST_START+48
-        { MG_PST[5][49], EG_PST[5][49] },  // KING_PST_START+49
-        { MG_PST[5][50], EG_PST[5][50] },  // KING_PST_START+50
-        { MG_PST[5][51], EG_PST[5][51] },  // KING_PST_START+51
-        { MG_PST[5][52], EG_PST[5][52] },  // KING_PST_START+52
-        { MG_PST[5][53], EG_PST[5][53] },  // KING_PST_START+53
-        { MG_PST[5][54], EG_PST[5][54] },  // KING_PST_START+54
-        { MG_PST[5][55], EG_PST[5][55] },  // KING_PST_START+55
-        { MG_PST[5][56], EG_PST[5][56] },  // KING_PST_START+56
-        { MG_PST[5][57], EG_PST[5][57] },  // KING_PST_START+57
-        { MG_PST[5][58], EG_PST[5][58] },  // KING_PST_START+58
-        { MG_PST[5][59], EG_PST[5][59] },  // KING_PST_START+59
-        { MG_PST[5][60], EG_PST[5][60] },  // KING_PST_START+60
-        { MG_PST[5][61], EG_PST[5][61] },  // KING_PST_START+61
-        { MG_PST[5][62], EG_PST[5][62] },  // KING_PST_START+62
-        { MG_PST[5][63], EG_PST[5][63] },  // KING_PST_START+63
+        {100,178},      // PAWN
+        {383,499},      // KNIGHT
+        {418,522},      // BISHOP
+        {501,891},      // ROOK
+        {1093,1688},    // QUEEN
+        {0,0},  // PAWN_PST_START+0
+        {0,0},  // PAWN_PST_START+1
+        {0,0},  // PAWN_PST_START+2
+        {0,0},  // PAWN_PST_START+3
+        {0,0},  // PAWN_PST_START+4
+        {0,0},  // PAWN_PST_START+5
+        {0,0},  // PAWN_PST_START+6
+        {0,0},  // PAWN_PST_START+7
+        {-67,26},       // PAWN_PST_START+8
+        {-43,27},       // PAWN_PST_START+9
+        {-47,14},       // PAWN_PST_START+10
+        {-57,20},       // PAWN_PST_START+11
+        {-37,25},       // PAWN_PST_START+12
+        {-22,13},       // PAWN_PST_START+13
+        {0,12}, // PAWN_PST_START+14
+        {-45,5},        // PAWN_PST_START+15
+        {-67,21},       // PAWN_PST_START+16
+        {-43,23},       // PAWN_PST_START+17
+        {-43,6},        // PAWN_PST_START+18
+        {-42,18},       // PAWN_PST_START+19
+        {-28,11},       // PAWN_PST_START+20
+        {-38,8},        // PAWN_PST_START+21
+        {-9,13},        // PAWN_PST_START+22
+        {-38,4},        // PAWN_PST_START+23
+        {-66,27},       // PAWN_PST_START+24
+        {-39,25},       // PAWN_PST_START+25
+        {-40,7},        // PAWN_PST_START+26
+        {-24,4},        // PAWN_PST_START+27
+        {-24,2},        // PAWN_PST_START+28
+        {-31,4},        // PAWN_PST_START+29
+        {-23,15},       // PAWN_PST_START+30
+        {-45,8},        // PAWN_PST_START+31
+        {-56,51},       // PAWN_PST_START+32
+        {-31,41},       // PAWN_PST_START+33
+        {-28,22},       // PAWN_PST_START+34
+        {-26,13},       // PAWN_PST_START+35
+        {-5,4}, // PAWN_PST_START+36
+        {-14,7},        // PAWN_PST_START+37
+        {-9,25},        // PAWN_PST_START+38
+        {-33,27},       // PAWN_PST_START+39
+        {-40,118},      // PAWN_PST_START+40
+        {-27,126},      // PAWN_PST_START+41
+        {6,93}, // PAWN_PST_START+42
+        {11,72},        // PAWN_PST_START+43
+        {14,64},        // PAWN_PST_START+44
+        {36,49},        // PAWN_PST_START+45
+        {16,95},        // PAWN_PST_START+46
+        {-26,93},       // PAWN_PST_START+47
+        {40,175},       // PAWN_PST_START+48
+        {61,167},       // PAWN_PST_START+49
+        {39,167},       // PAWN_PST_START+50
+        {68,120},       // PAWN_PST_START+51
+        {52,117},       // PAWN_PST_START+52
+        {35,127},       // PAWN_PST_START+53
+        {-31,171},      // PAWN_PST_START+54
+        {-56,184},      // PAWN_PST_START+55
+        {0,0},  // PAWN_PST_START+56
+        {0,0},  // PAWN_PST_START+57
+        {0,0},  // PAWN_PST_START+58
+        {0,0},  // PAWN_PST_START+59
+        {0,0},  // PAWN_PST_START+60
+        {0,0},  // PAWN_PST_START+61
+        {0,0},  // PAWN_PST_START+62
+        {0,0},  // PAWN_PST_START+63
+        {-153,46},      // KNIGHT_PST_START+0
+        {-101,34},      // KNIGHT_PST_START+1
+        {-114,62},      // KNIGHT_PST_START+2
+        {-100,66},      // KNIGHT_PST_START+3
+        {-95,66},       // KNIGHT_PST_START+4
+        {-83,56},       // KNIGHT_PST_START+5
+        {-99,41},       // KNIGHT_PST_START+6
+        {-124,35},      // KNIGHT_PST_START+7
+        {-111,53},      // KNIGHT_PST_START+8
+        {-100,69},      // KNIGHT_PST_START+9
+        {-83,78},       // KNIGHT_PST_START+10
+        {-72,81},       // KNIGHT_PST_START+11
+        {-71,80},       // KNIGHT_PST_START+12
+        {-69,75},       // KNIGHT_PST_START+13
+        {-81,60},       // KNIGHT_PST_START+14
+        {-85,64},       // KNIGHT_PST_START+15
+        {-98,62},       // KNIGHT_PST_START+16
+        {-76,80},       // KNIGHT_PST_START+17
+        {-63,90},       // KNIGHT_PST_START+18
+        {-60,103},      // KNIGHT_PST_START+19
+        {-49,101},      // KNIGHT_PST_START+20
+        {-59,86},       // KNIGHT_PST_START+21
+        {-55,75},       // KNIGHT_PST_START+22
+        {-83,64},       // KNIGHT_PST_START+23
+        {-80,78},       // KNIGHT_PST_START+24
+        {-65,87},       // KNIGHT_PST_START+25
+        {-51,109},      // KNIGHT_PST_START+26
+        {-49,109},      // KNIGHT_PST_START+27
+        {-41,112},      // KNIGHT_PST_START+28
+        {-45,103},      // KNIGHT_PST_START+29
+        {-47,89},       // KNIGHT_PST_START+30
+        {-70,69},       // KNIGHT_PST_START+31
+        {-67,76},       // KNIGHT_PST_START+32
+        {-54,96},       // KNIGHT_PST_START+33
+        {-30,107},      // KNIGHT_PST_START+34
+        {-9,109},       // KNIGHT_PST_START+35
+        {-27,110},      // KNIGHT_PST_START+36
+        {-2,104},       // KNIGHT_PST_START+37
+        {-44,95},       // KNIGHT_PST_START+38
+        {-34,69},       // KNIGHT_PST_START+39
+        {-63,66},       // KNIGHT_PST_START+40
+        {-29,80},       // KNIGHT_PST_START+41
+        {-12,96},       // KNIGHT_PST_START+42
+        {-1,96},        // KNIGHT_PST_START+43
+        {36,81},        // KNIGHT_PST_START+44
+        {37,76},        // KNIGHT_PST_START+45
+        {-7,70},        // KNIGHT_PST_START+46
+        {-37,56},       // KNIGHT_PST_START+47
+        {-78,50},       // KNIGHT_PST_START+48
+        {-61,70},       // KNIGHT_PST_START+49
+        {-35,78},       // KNIGHT_PST_START+50
+        {-19,77},       // KNIGHT_PST_START+51
+        {-34,70},       // KNIGHT_PST_START+52
+        {27,55},        // KNIGHT_PST_START+53
+        {-61,67},       // KNIGHT_PST_START+54
+        {-39,35},       // KNIGHT_PST_START+55
+        {-212,1},       // KNIGHT_PST_START+56
+        {-175,57},      // KNIGHT_PST_START+57
+        {-112,70},      // KNIGHT_PST_START+58
+        {-81,63},       // KNIGHT_PST_START+59
+        {-49,65},       // KNIGHT_PST_START+60
+        {-106,43},      // KNIGHT_PST_START+61
+        {-153,62},      // KNIGHT_PST_START+62
+        {-155,-22},     // KNIGHT_PST_START+63
+        {4,82}, // BISHOP_PST_START+0
+        {24,99},        // BISHOP_PST_START+1
+        {8,80}, // BISHOP_PST_START+2
+        {0,102},        // BISHOP_PST_START+3
+        {4,98}, // BISHOP_PST_START+4
+        {3,99}, // BISHOP_PST_START+5
+        {28,84},        // BISHOP_PST_START+6
+        {14,69},        // BISHOP_PST_START+7
+        {25,98},        // BISHOP_PST_START+8
+        {27,99},        // BISHOP_PST_START+9
+        {37,97},        // BISHOP_PST_START+10
+        {16,112},       // BISHOP_PST_START+11
+        {24,114},       // BISHOP_PST_START+12
+        {36,102},       // BISHOP_PST_START+13
+        {42,104},       // BISHOP_PST_START+14
+        {30,79},        // BISHOP_PST_START+15
+        {23,104},       // BISHOP_PST_START+16
+        {30,114},       // BISHOP_PST_START+17
+        {30,121},       // BISHOP_PST_START+18
+        {33,121},       // BISHOP_PST_START+19
+        {34,125},       // BISHOP_PST_START+20
+        {29,121},       // BISHOP_PST_START+21
+        {32,105},       // BISHOP_PST_START+22
+        {35,94},        // BISHOP_PST_START+23
+        {13,104},       // BISHOP_PST_START+24
+        {26,121},       // BISHOP_PST_START+25
+        {32,129},       // BISHOP_PST_START+26
+        {52,125},       // BISHOP_PST_START+27
+        {49,125},       // BISHOP_PST_START+28
+        {34,124},       // BISHOP_PST_START+29
+        {26,118},       // BISHOP_PST_START+30
+        {21,94},        // BISHOP_PST_START+31
+        {19,108},       // BISHOP_PST_START+32
+        {33,124},       // BISHOP_PST_START+33
+        {55,118},       // BISHOP_PST_START+34
+        {65,131},       // BISHOP_PST_START+35
+        {62,124},       // BISHOP_PST_START+36
+        {58,122},       // BISHOP_PST_START+37
+        {34,121},       // BISHOP_PST_START+38
+        {20,108},       // BISHOP_PST_START+39
+        {27,113},       // BISHOP_PST_START+40
+        {51,107},       // BISHOP_PST_START+41
+        {51,118},       // BISHOP_PST_START+42
+        {74,107},       // BISHOP_PST_START+43
+        {61,112},       // BISHOP_PST_START+44
+        {92,113},       // BISHOP_PST_START+45
+        {69,106},       // BISHOP_PST_START+46
+        {57,106},       // BISHOP_PST_START+47
+        {18,85},        // BISHOP_PST_START+48
+        {41,103},       // BISHOP_PST_START+49
+        {35,107},       // BISHOP_PST_START+50
+        {18,110},       // BISHOP_PST_START+51
+        {47,101},       // BISHOP_PST_START+52
+        {47,99},        // BISHOP_PST_START+53
+        {38,107},       // BISHOP_PST_START+54
+        {27,83},        // BISHOP_PST_START+55
+        {2,97}, // BISHOP_PST_START+56
+        {-16,108},      // BISHOP_PST_START+57
+        {-6,106},       // BISHOP_PST_START+58
+        {-46,119},      // BISHOP_PST_START+59
+        {-35,112},      // BISHOP_PST_START+60
+        {-18,103},      // BISHOP_PST_START+61
+        {13,96},        // BISHOP_PST_START+62
+        {-25,95},       // BISHOP_PST_START+63
+        {24,186},       // ROOK_PST_START+0
+        {25,195},       // ROOK_PST_START+1
+        {34,202},       // ROOK_PST_START+2
+        {40,201},       // ROOK_PST_START+3
+        {44,193},       // ROOK_PST_START+4
+        {34,189},       // ROOK_PST_START+5
+        {48,184},       // ROOK_PST_START+6
+        {25,178},       // ROOK_PST_START+7
+        {5,190},        // ROOK_PST_START+8
+        {17,193},       // ROOK_PST_START+9
+        {32,194},       // ROOK_PST_START+10
+        {28,196},       // ROOK_PST_START+11
+        {33,188},       // ROOK_PST_START+12
+        {35,184},       // ROOK_PST_START+13
+        {51,175},       // ROOK_PST_START+14
+        {22,180},       // ROOK_PST_START+15
+        {8,195},        // ROOK_PST_START+16
+        {17,195},       // ROOK_PST_START+17
+        {26,194},       // ROOK_PST_START+18
+        {25,199},       // ROOK_PST_START+19
+        {30,194},       // ROOK_PST_START+20
+        {28,187},       // ROOK_PST_START+21
+        {61,167},       // ROOK_PST_START+22
+        {40,168},       // ROOK_PST_START+23
+        {15,199},       // ROOK_PST_START+24
+        {17,204},       // ROOK_PST_START+25
+        {27,206},       // ROOK_PST_START+26
+        {39,205},       // ROOK_PST_START+27
+        {39,200},       // ROOK_PST_START+28
+        {24,198},       // ROOK_PST_START+29
+        {47,186},       // ROOK_PST_START+30
+        {39,181},       // ROOK_PST_START+31
+        {33,206},       // ROOK_PST_START+32
+        {47,205},       // ROOK_PST_START+33
+        {49,213},       // ROOK_PST_START+34
+        {57,210},       // ROOK_PST_START+35
+        {63,195},       // ROOK_PST_START+36
+        {63,189},       // ROOK_PST_START+37
+        {72,186},       // ROOK_PST_START+38
+        {74,180},       // ROOK_PST_START+39
+        {49,204},       // ROOK_PST_START+40
+        {69,207},       // ROOK_PST_START+41
+        {71,208},       // ROOK_PST_START+42
+        {75,206},       // ROOK_PST_START+43
+        {102,193},      // ROOK_PST_START+44
+        {103,187},      // ROOK_PST_START+45
+        {140,179},      // ROOK_PST_START+46
+        {118,174},      // ROOK_PST_START+47
+        {69,203},       // ROOK_PST_START+48
+        {69,215},       // ROOK_PST_START+49
+        {87,219},       // ROOK_PST_START+50
+        {107,210},      // ROOK_PST_START+51
+        {93,210},       // ROOK_PST_START+52
+        {122,196},      // ROOK_PST_START+53
+        {108,193},      // ROOK_PST_START+54
+        {138,179},      // ROOK_PST_START+55
+        {88,203},       // ROOK_PST_START+56
+        {79,210},       // ROOK_PST_START+57
+        {87,219},       // ROOK_PST_START+58
+        {91,215},       // ROOK_PST_START+59
+        {110,206},      // ROOK_PST_START+60
+        {125,196},      // ROOK_PST_START+61
+        {108,198},      // ROOK_PST_START+62
+        {128,193},      // ROOK_PST_START+63
+        {56,181},       // QUEEN_PST_START+0
+        {45,190},       // QUEEN_PST_START+1
+        {52,193},       // QUEEN_PST_START+2
+        {67,185},       // QUEEN_PST_START+3
+        {59,189},       // QUEEN_PST_START+4
+        {46,188},       // QUEEN_PST_START+5
+        {70,155},       // QUEEN_PST_START+6
+        {64,151},       // QUEEN_PST_START+7
+        {58,189},       // QUEEN_PST_START+8
+        {63,193},       // QUEEN_PST_START+9
+        {73,190},       // QUEEN_PST_START+10
+        {72,200},       // QUEEN_PST_START+11
+        {70,203},       // QUEEN_PST_START+12
+        {79,177},       // QUEEN_PST_START+13
+        {85,149},       // QUEEN_PST_START+14
+        {97,117},       // QUEEN_PST_START+15
+        {59,194},       // QUEEN_PST_START+16
+        {66,210},       // QUEEN_PST_START+17
+        {61,233},       // QUEEN_PST_START+18
+        {60,232},       // QUEEN_PST_START+19
+        {63,235},       // QUEEN_PST_START+20
+        {70,226},       // QUEEN_PST_START+21
+        {82,204},       // QUEEN_PST_START+22
+        {76,192},       // QUEEN_PST_START+23
+        {62,205},       // QUEEN_PST_START+24
+        {59,234},       // QUEEN_PST_START+25
+        {58,244},       // QUEEN_PST_START+26
+        {67,263},       // QUEEN_PST_START+27
+        {65,261},       // QUEEN_PST_START+28
+        {65,252},       // QUEEN_PST_START+29
+        {76,232},       // QUEEN_PST_START+30
+        {79,219},       // QUEEN_PST_START+31
+        {59,210},       // QUEEN_PST_START+32
+        {64,232},       // QUEEN_PST_START+33
+        {68,246},       // QUEEN_PST_START+34
+        {67,270},       // QUEEN_PST_START+35
+        {69,282},       // QUEEN_PST_START+36
+        {82,267},       // QUEEN_PST_START+37
+        {82,253},       // QUEEN_PST_START+38
+        {88,231},       // QUEEN_PST_START+39
+        {76,200},       // QUEEN_PST_START+40
+        {74,217},       // QUEEN_PST_START+41
+        {72,258},       // QUEEN_PST_START+42
+        {88,260},       // QUEEN_PST_START+43
+        {93,272},       // QUEEN_PST_START+44
+        {135,252},      // QUEEN_PST_START+45
+        {135,215},      // QUEEN_PST_START+46
+        {132,203},      // QUEEN_PST_START+47
+        {75,190},       // QUEEN_PST_START+48
+        {53,232},       // QUEEN_PST_START+49
+        {60,264},       // QUEEN_PST_START+50
+        {54,281},       // QUEEN_PST_START+51
+        {60,297},       // QUEEN_PST_START+52
+        {96,258},       // QUEEN_PST_START+53
+        {76,241},       // QUEEN_PST_START+54
+        {119,217},      // QUEEN_PST_START+55
+        {38,226},       // QUEEN_PST_START+56
+        {47,237},       // QUEEN_PST_START+57
+        {80,251},       // QUEEN_PST_START+58
+        {112,238},      // QUEEN_PST_START+59
+        {110,237},      // QUEEN_PST_START+60
+        {123,223},      // QUEEN_PST_START+61
+        {138,182},      // QUEEN_PST_START+62
+        {81,216},       // QUEEN_PST_START+63
+        {65,-72},       // KING_PST_START+0
+        {88,-54},       // KING_PST_START+1
+        {62,-34},       // KING_PST_START+2
+        {-36,-16},      // KING_PST_START+3
+        {27,-41},       // KING_PST_START+4
+        {-12,-18},      // KING_PST_START+5
+        {69,-44},       // KING_PST_START+6
+        {70,-72},       // KING_PST_START+7
+        {69,-38},       // KING_PST_START+8
+        {29,-12},       // KING_PST_START+9
+        {16,0}, // KING_PST_START+10
+        {-18,11},       // KING_PST_START+11
+        {-20,14},       // KING_PST_START+12
+        {-2,5}, // KING_PST_START+13
+        {45,-13},       // KING_PST_START+14
+        {54,-31},       // KING_PST_START+15
+        {-17,-17},      // KING_PST_START+16
+        {-2,5}, // KING_PST_START+17
+        {-57,26},       // KING_PST_START+18
+        {-70,38},       // KING_PST_START+19
+        {-63,37},       // KING_PST_START+20
+        {-61,29},       // KING_PST_START+21
+        {-17,10},       // KING_PST_START+22
+        {-33,-1},       // KING_PST_START+23
+        {-60,-7},       // KING_PST_START+24
+        {-69,23},       // KING_PST_START+25
+        {-99,46},       // KING_PST_START+26
+        {-125,60},      // KING_PST_START+27
+        {-122,60},      // KING_PST_START+28
+        {-86,47},       // KING_PST_START+29
+        {-90,36},       // KING_PST_START+30
+        {-113,20},      // KING_PST_START+31
+        {-66,4},        // KING_PST_START+32
+        {-76,38},       // KING_PST_START+33
+        {-90,55},       // KING_PST_START+34
+        {-135,68},      // KING_PST_START+35
+        {-122,67},      // KING_PST_START+36
+        {-85,61},       // KING_PST_START+37
+        {-84,53},       // KING_PST_START+38
+        {-107,28},      // KING_PST_START+39
+        {-100,15},      // KING_PST_START+40
+        {3,32}, // KING_PST_START+41
+        {-63,51},       // KING_PST_START+42
+        {-81,61},       // KING_PST_START+43
+        {-43,61},       // KING_PST_START+44
+        {30,53},        // KING_PST_START+45
+        {12,52},        // KING_PST_START+46
+        {-24,24},       // KING_PST_START+47
+        {-79,-1},       // KING_PST_START+48
+        {-39,27},       // KING_PST_START+49
+        {-80,40},       // KING_PST_START+50
+        {20,22},        // KING_PST_START+51
+        {-27,42},       // KING_PST_START+52
+        {-22,53},       // KING_PST_START+53
+        {18,43},        // KING_PST_START+54
+        {0,13}, // KING_PST_START+55
+        {47,-94},       // KING_PST_START+56
+        {30,-47},       // KING_PST_START+57
+        {51,-35},       // KING_PST_START+58
+        {-81,13},       // KING_PST_START+59
+        {-38,-4},       // KING_PST_START+60
+        {21,-3},        // KING_PST_START+61
+        {81,-13},       // KING_PST_START+62
+        {195,-118},     // KING_PST_START+63
             //PAWN EVAL
             // PASSED PST values
         { passed_pawns_MG[0], passed_pawns_EG[0] },    // PASSED_PAWNS_START
@@ -612,19 +599,19 @@ EvaluationResult EvalWeights[PARAM_COUNT1] = {
         { -7,-21 },         // DOUBLE_PAWN_FILE_START+5
         { -6,-28 },         // DOUBLE_PAWN_FILE_START+6
         { -18,-43 },        // DOUBLE_PAWN_FILE_START+7
-        { 21,-13 },         // PAWN_SHIELD_BONUS,
-        { -77,-13 },        // DIRECTLY_ON_OPEN_FILE_NEXT_TO_OPEN_PENALTY,
-        { -76,-7 },         // DIRECTLY_ON_OPEN_FILE_NOT_NEXT_TO_OPEN_PENALTY,
-        { -33,-17 },        // NEXT_TO_OPEN_FILE_PENALTY,
-        { 14,2 },   // DIRECTLY_ON_SEMI_OPEN_FILE_NEXT_TO_OPEN_PENALTY,
-        { 8,-17 },          // DIRECTLY_ON_SEMI_OPEN_FILE_NOT_NEXT_TO_OPEN_PENALTY,
-        { 4,-11 },          // NEXT_TO_SEMI_OPEN_FILE_PENALTY,
+        { 0,0 },         // PAWN_SHIELD_BONUS,
+        { 0,0 },        // DIRECTLY_ON_OPEN_FILE_NEXT_TO_OPEN_PENALTY,
+        { 0,0 },         // DIRECTLY_ON_OPEN_FILE_NOT_NEXT_TO_OPEN_PENALTY,
+        { 0,0 },        // NEXT_TO_OPEN_FILE_PENALTY,
+        { 0,0 },   // DIRECTLY_ON_SEMI_OPEN_FILE_NEXT_TO_OPEN_PENALTY,
+        { 0,0 },          // DIRECTLY_ON_SEMI_OPEN_FILE_NOT_NEXT_TO_OPEN_PENALTY,
+        { 0,0 },          // NEXT_TO_SEMI_OPEN_FILE_PENALTY,
             // NEXT_TO_OPEN_DIAGONAL_PENALTY values
-        { -24,-54 },        // NEXT_TO_OPEN_DIAGONAL_PENALTY_START
-        { -1,-9 },          // NEXT_TO_OPEN_DIAGONAL_PENALTY_START+1
-        { 13,16 },          // NEXT_TO_OPEN_DIAGONAL_PENALTY_START+2
-        { 28,4 },   // NEXT_TO_OPEN_DIAGONAL_PENALTY_START+3
-        { 12,7 },   // NEXT_TO_OPEN_DIAGONAL_PENALTY_START+4
+        { 0,0 },        // NEXT_TO_OPEN_DIAGONAL_PENALTY_START
+        { 0,0 },          // NEXT_TO_OPEN_DIAGONAL_PENALTY_START+1
+        { 0,0 },          // NEXT_TO_OPEN_DIAGONAL_PENALTY_START+2
+        { 0,0 },   // NEXT_TO_OPEN_DIAGONAL_PENALTY_START+3
+        { 0,0 },   // NEXT_TO_OPEN_DIAGONAL_PENALTY_START+4
         { 0,0 },    // NEXT_TO_OPEN_DIAGONAL_PENALTY_START+5
         { 0,0 },    // NEXT_TO_OPEN_DIAGONAL_PENALTY_START+6
             // MOBILITY values

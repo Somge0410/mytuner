@@ -151,26 +151,29 @@ enum EvalParam {
 	BISHOP_OUTPOST_WITH_OPPOSITE_BISHOP,
 	KNIGHT_OUTPOST_NO_OPPOSITE_BISHOP,
 	KNIGHT_OUTPOST_WITH_OPPOSITE_BISHOP,
-	PARAM_COUNT,
 	PARAM_COUNT1
 };
+
+constexpr int PARAM_START = PAWN_SHIELD_BONUS;
+constexpr int PARAM_END = NEXT_TO_OPEN_DIAGONAL_PENALTY_END + 1;
+constexpr int PARAM_LENGTH = PARAM_END - PARAM_START;
 extern EvaluationResult EvalWeights[PARAM_COUNT1];
 
 struct Trace { 
-	int counts[PARAM_COUNT]= {0}; 
+	int counts[PARAM_COUNT1]= {0}; 
 	void add(EvalParam param, int count = 1) {
 		counts[param] += count;
 	}
 };	
 static int get_trace_eval(Trace* trace, const EvaluationResult weights[PARAM_COUNT1],int game_phase) {
 	EvaluationResult eval = {0,0};
-	for (int i = 0; i < PARAM_COUNT; i++) {
+	for (int i = 0; i < PARAM_LENGTH; i++) {
 		eval += weights[i] *trace->counts[i] ;
 	}
 	return tapered(eval,game_phase);
 }
 
-bool trace_eval_agree(const Board& board, const EvaluationResult weights[PARAM_COUNT]);
+bool trace_eval_agree(const Board& board, const EvaluationResult weights[PARAM_COUNT1]);
 
 template <bool isTracing>
 void addTerm(EvaluationResult& score,EvalParam param, int count=1, Trace* trace=nullptr) {
