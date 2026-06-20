@@ -404,7 +404,6 @@ EvaluationResult EvalWeights[PARAM_COUNT1] = {
         { MG_PST[5][61], EG_PST[5][61] },  // KING_PST_START+61
         { MG_PST[5][62], EG_PST[5][62] },  // KING_PST_START+62
         { MG_PST[5][63], EG_PST[5][63] },  // KING_PST_START+63
-};
             //PAWN EVAL
             // PASSED PST values
         { passed_pawns_MG[0], passed_pawns_EG[0] },    // PASSED_PAWNS_START
