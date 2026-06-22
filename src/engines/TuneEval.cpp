@@ -12,6 +12,12 @@
 //    return sq ^ 56;
 //}
 void TuneEval::normalize_pst(parameters_t& params) {
+    // Nur normalisieren, wenn der komplette PST-Bereich (Pawn..King) im Tuning-Fenster liegt.
+    // PARAM_END wird im Projekt exklusiv verwendet (< PARAM_END), daher > KING_PST_END.
+    if (!(PARAM_START <= PAWN_PST_START && PARAM_END > KING_PST_END)) {
+        return;
+    }
+
     struct PstNormEntry {
         int pst_start;
         int value_param;
@@ -34,30 +40,11 @@ void TuneEval::normalize_pst(parameters_t& params) {
     };
 
     auto add_phase_value = [&](int global_index, int phase, double delta) {
-        if (is_tuned(global_index)) {
-            params[local_index_of(global_index)][phase] += delta;
-            return;
-        }
-
-        if (phase == static_cast<int>(PhaseStages::Midgame)) {
-            EvalWeights[global_index].mg_score = static_cast<int16_t>(
-                std::lround(static_cast<double>(EvalWeights[global_index].mg_score) + delta)
-            );
-        } else {
-            EvalWeights[global_index].eg_score = static_cast<int16_t>(
-                std::lround(static_cast<double>(EvalWeights[global_index].eg_score) + delta)
-            );
-        }
+        params[local_index_of(global_index)][phase] += delta;
     };
 
     auto get_phase_value = [&](int global_index, int phase) -> double {
-        if (is_tuned(global_index)) {
-            return params[local_index_of(global_index)][phase];
-        }
-
-        return (phase == static_cast<int>(PhaseStages::Midgame))
-            ? static_cast<double>(EvalWeights[global_index].mg_score)
-            : static_cast<double>(EvalWeights[global_index].eg_score);
+        return params[local_index_of(global_index)][phase];
     };
 
     for (const auto& entry : pst_norm_entries) {
@@ -66,6 +53,12 @@ void TuneEval::normalize_pst(parameters_t& params) {
         if (entry.pst_start == PAWN_PST_START) {
             start_sq = 8;
             end_sq = 56;
+        }
+
+        // Sicherheitscheck: Ohne value_param im Tuning-Fenster keine Normalisierung
+        // (sonst könnte die Summe nicht auf piece value verschoben werden).
+        if (!is_tuned(entry.value_param)) {
+            continue;
         }
 
         std::vector<int> tuned_pst_indices;
@@ -78,7 +71,6 @@ void TuneEval::normalize_pst(parameters_t& params) {
             }
         }
 
-        // Nichts in diesem PST-Bereich getuned -> nichts normalisieren
         if (tuned_pst_indices.empty()) {
             continue;
         }
@@ -199,7 +191,8 @@ void TuneEval::print_parameters(parameters_t& parameters) {
     const double pawn_mg = get_phase_value(parameters, PAWN, mg);
 
     const double mg_scale = (pawn_mg != 0.0) ? 100.0 / pawn_mg : 0.0;
-    const double eg_scale = (pawn_mg != 0.0) ? 100.0 / pawn_mg : 0.0;
+        const double eg_scale = (pawn_mg != 0.0) ? 100.0 / pawn_mg : 0.0;
+
 
     std::cout << "EvaluationResult EvalWeights[PARAM_COUNT1] = {\n";
     for (int idx = PAWN; idx < PARAM_END; ++idx)

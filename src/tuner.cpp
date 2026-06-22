@@ -722,7 +722,7 @@ void Tuner::run(const std::vector<DataSource>& sources)
 #endif
 
         }
-        //TuneEval::normalize_pst(parameters);
+        TuneEval::normalize_pst(parameters);
         if (epoch % 250 == 0)
         {
             const auto elapsed_ms = duration_cast<milliseconds>(high_resolution_clock::now() - loop_start).count();

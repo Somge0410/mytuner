@@ -23,7 +23,6 @@ int evaluate(const Board& board, Trace* trace, uint8_t terms_mask) {
 	EvaluationResult add_score = { 0,0 };
 	eval_material<true>(score, board, trace);
 	eval_positional<true>(score, board, trace);
-	add_score = score;
 	eval_pawns<true>(score, ctx, trace);
 	eval_king_safety<true>(score, ctx, trace);
 	eval_mobility<true>(score, ctx, trace);
