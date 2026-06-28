@@ -96,15 +96,15 @@ inline int tapered(EvaluationResult score, int game_phase) {
 
 
 
-extern EvaluationResult EvalWeights[PARAM_COUNT1];
+extern EvaluationResult EvalWeights[PARAM_COUNT];
 
 struct Trace { 
-	int counts[PARAM_COUNT1]= {0}; 
+	int counts[PARAM_COUNT]= {0}; 
 	void add(EvalParam param, int count = 1) {
 		counts[param] += count;
 	}
 };	
-static int get_trace_eval(Trace* trace, const EvaluationResult weights[PARAM_COUNT1],int game_phase) {
+static int get_trace_eval(Trace* trace, const EvaluationResult weights[PARAM_COUNT],int game_phase) {
 	EvaluationResult eval = {0,0};
 	for (int i = 0; i < PARAM_LENGTH; i++) {
 		eval += weights[i] *trace->counts[i] ;
@@ -112,7 +112,7 @@ static int get_trace_eval(Trace* trace, const EvaluationResult weights[PARAM_COU
 	return tapered(eval,game_phase);
 }
 
-bool trace_eval_agree(const Board& board, const EvaluationResult weights[PARAM_COUNT1]);
+bool trace_eval_agree(const Board& board, const EvaluationResult weights[PARAM_COUNT]);
 
 template <bool isTracing>
 void addTerm(EvaluationResult& score,EvalParam param, int count=1, Trace* trace=nullptr) {

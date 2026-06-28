@@ -184,22 +184,57 @@ namespace {
     }
 }
 
+#include <iostream>
+#include <iomanip> // Required for std::setw
+#include <cmath>
+
 void TuneEval::print_parameters(parameters_t& parameters) {
     const int mg = static_cast<int>(PhaseStages::Midgame);
     const int eg = static_cast<int>(PhaseStages::Endgame);
-	//normalize_pst(parameters);
+    //normalize_pst(parameters);
     const double pawn_mg = get_phase_value(parameters, PAWN, mg);
 
     const double mg_scale = (pawn_mg != 0.0) ? 100.0 / pawn_mg : 0.0;
-        const double eg_scale = (pawn_mg != 0.0) ? 100.0 / pawn_mg : 0.0;
+    const double eg_scale = (pawn_mg != 0.0) ? 100.0 / pawn_mg : 0.0;
 
+    std::cout << "EvaluationResult EvalWeights[PARAM_COUNT] = {\n";
 
-    std::cout << "EvaluationResult EvalWeights[PARAM_COUNT1] = {\n";
     for (int idx = PAWN; idx < PARAM_END; ++idx)
     {
-        const auto mg_value = static_cast<int>(std::round(get_phase_value(parameters, idx, mg) * mg_scale));
-        const auto eg_value = static_cast<int>(std::round(get_phase_value(parameters, idx, eg) * eg_scale));
-        std::cout << "\t{" << mg_value << "," << eg_value << "},\t// " << get_parameter_name(idx) << '\n';
+        // Check if the current index is the start of an 8x8 piece-square table
+        if (idx == PAWN_PST_START || idx == KNIGHT_PST_START ||
+            idx == BISHOP_PST_START || idx == ROOK_PST_START ||
+            idx == QUEEN_PST_START || idx == KING_PST_START ||
+            idx == PASSED_PAWNS_START || idx == ISOLANI_START ||
+            idx == BLOCKED_ISOLANI_START)
+        {
+            std::cout << "\t// " << get_parameter_name(idx) << "\n";
+
+            // Loop through the 64 squares (8 ranks x 8 files)
+            for (int rank = 0; rank < 8; ++rank) {
+                std::cout << "\t";
+                for (int file = 0; file < 8; ++file) {
+                    int sq_idx = idx + rank * 8 + file;
+                    int mg_value = static_cast<int>(std::round(get_phase_value(parameters, sq_idx, mg) * mg_scale));
+                    int eg_value = static_cast<int>(std::round(get_phase_value(parameters, sq_idx, eg) * eg_scale));
+
+                    // Format the output to align properly in columns
+                    std::cout << "{" << std::setw(3) << mg_value << ", " << std::setw(3) << eg_value << "}, ";
+                }
+                std::cout << "\n"; // Newline after every rank
+            }
+
+            // Advance the index by 63. 
+            // The for-loop will do ++idx, advancing it to a total of 64 (the next parameter block)
+            idx += 63;
+        }
+        else
+        {
+            // Standard formatting for single parameters
+            const auto mg_value = static_cast<int>(std::round(get_phase_value(parameters, idx, mg) * mg_scale));
+            const auto eg_value = static_cast<int>(std::round(get_phase_value(parameters, idx, eg) * eg_scale));
+            std::cout << "\t{" << mg_value << ", " << eg_value << "},\t// " << get_parameter_name(idx) << '\n';
+        }
     }
     std::cout << "};\n";
 }
