@@ -310,7 +310,7 @@ static void print_parameter_non_zero_coverage(const parameters_t& parameters, co
                 continue;
             }
 
-            const auto parameter_index = static_cast<size_t>(coefficient.index);
+            const auto parameter_index = PARAM_START+static_cast<size_t>(coefficient.index);
             if (parameter_index < non_zero_counts.size())
             {
                 non_zero_counts[parameter_index]++;
@@ -324,7 +324,7 @@ static void print_parameter_non_zero_coverage(const parameters_t& parameters, co
     size_t ever_non_zero = 0;
     for (size_t i = 0; i < non_zero_counts.size(); i++)
     {
-        const auto count = non_zero_counts[i];
+        const auto count = non_zero_counts[i+PARAM_START];
         if (count > 0)
         {
             ever_non_zero++;
@@ -335,7 +335,7 @@ static void print_parameter_non_zero_coverage(const parameters_t& parameters, co
             : static_cast<tune_t>(100.0) * static_cast<tune_t>(count) / static_cast<tune_t>(entries.size());
 
         const auto idx = static_cast<int>(i);
-        cout << "Param[" << i << "] " << get_parameter_name(idx) << ": "
+        cout << "Param[" << i+PARAM_START << "] " << get_parameter_name(idx+PARAM_START) << ": "
             << count << " / " << entries.size()
             << " (" << percentage << "%)" << endl;
     }

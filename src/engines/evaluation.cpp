@@ -25,6 +25,8 @@ int evaluate(const Board& board, Trace* trace, uint8_t terms_mask) {
 	eval_positional<true>(score, board, trace);
 	eval_pawns<true>(score, ctx, trace);
 	eval_king_safety<true>(score, ctx, trace);
+
+
 	eval_mobility<true>(score, ctx, trace);
 	eval_rook_activity<true>(score, ctx, trace);
 	eval_minor_pieces<true>(score, ctx, trace);
