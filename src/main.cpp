@@ -9,7 +9,6 @@
 #include "zobrist.h"
 #include "board.h"
 #include "evaluation.h"
-#include "tuner.h"
 using namespace std;
 using namespace Tuner;
 

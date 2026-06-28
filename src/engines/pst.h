@@ -1,7 +1,7 @@
 #pragma once
 // === PST TABLES (for pst.h) ===
 
-const int MG_PST[6][64] = {
+inline int MG_PST[6][64] = {
     // White Pieces (Color::WHITE)
         // Pawns (PieceType::PAWN)
         {    0,   0,   0,   0,   0,   0,   0,   0,
@@ -59,7 +59,7 @@ const int MG_PST[6][64] = {
                         71,  87,  90, -56, -34,  34, 108, 209 }
 };
 
-const int EG_PST[6][64] = {
+inline int EG_PST[6][64] = {
     // White Pieces (Color::WHITE)
         // Pawns (PieceType::PAWN)
         {    0,   0,   0,   0,   0,   0,   0,   0,
@@ -117,7 +117,7 @@ const int EG_PST[6][64] = {
                         -100, -54, -35,   7,  -1,  -5, -21,-114 }
 };
 
-constexpr int passed_pawns_MG[64] = {
+ inline int passed_pawns_MG[64] = {
            0,   0,   0,   0,   0,   0,   0,   0,
          -17,   1, -15, -24,  -5,  -2,  27,  11,
          -11,  -7, -25, -20, -18, -15,  -2,  11,
@@ -128,7 +128,7 @@ constexpr int passed_pawns_MG[64] = {
            0,   0,   0,   0,   0,   0,   0,   0
 };
 
-constexpr int passed_pawns_EG[64] = {
+ inline int passed_pawns_EG[64] = {
            0,   0,   0,   0,   0,   0,   0,   0,
            9,   9,   2,   3, -11,  -7,   2,   5,
           11,  16,   7,  -1,   1,   2,  25,   7,

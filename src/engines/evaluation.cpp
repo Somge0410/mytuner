@@ -7,7 +7,7 @@ PawnEvalEntry& get_pawn_entry(size_t idx) {
 	}
 	return (*pawn_evaluation_table)[idx];
 }
-bool trace_eval_agree(const Board& board, const EvaluationResult weights[PARAM_COUNT]) {
+bool trace_eval_agree(const Board& board, const EvaluationResult weights[PARAM_COUNT1]) {
 	Trace trace;
 	int eval = evaluate<true>(board, &trace);
 	int trace_eval = get_trace_eval(&trace, weights, board.get_game_phase());
@@ -20,15 +20,17 @@ template<bool isTracing>
 int evaluate(const Board& board, Trace* trace, uint8_t terms_mask) {
 	EvaluationResult score = { 0,0 };
 	EvalContext ctx(board);
+	EvaluationResult add_score = { 0,0 };
+	eval_material<true>(score, board, trace);
+	eval_positional<true>(score, board, trace);
+	eval_pawns<true>(score, ctx, trace);
+	eval_king_safety<true>(score, ctx, trace);
+	eval_mobility<true>(score, ctx, trace);
 
-	eval_material<isTracing>(score, board, trace);
-	eval_positional<isTracing>(score, board, trace);
-	eval_pawns<isTracing>(score, ctx, trace);
-	eval_king_safety<isTracing>(score, ctx, trace);
-	eval_mobility<isTracing>(score, ctx, trace);
-	eval_rook_activity<isTracing>(score, ctx, trace);
-	eval_minor_pieces<isTracing>(score, ctx, trace);
-	return tapered(score, board.get_game_phase());
+	add_score = score;
+	eval_rook_activity<true>(score, ctx, trace);
+	eval_minor_pieces<true>(score, ctx, trace);
+	return tapered(add_score, board.get_game_phase());
 
 }
 template int evaluate<false>(const Board& board, Trace* trace, uint8_t terms_mask);

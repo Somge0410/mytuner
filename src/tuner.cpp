@@ -4,6 +4,7 @@
 #include "TuneEval.h"
 #include "base.h"
 #include "bitboard_masks.h"
+#include "evaluation.h"
 #include <array>
 #include <chrono>
 #include <cmath>
@@ -240,6 +241,111 @@ static void print_statistics(const parameters_t& parameters, const vector<Entry>
     cout << "Parameters min: " << min_parameters << endl;
     cout << "Parameters max: " << max_parameters << endl;
     cout << "Parameters avg: " << avg_parameters << endl;
+    cout << endl;
+}
+
+
+static string get_parameter_name(int index)
+{
+    switch (index)
+    {
+    case PAWN: return "PAWN";
+    case KNIGHT: return "KNIGHT";
+    case BISHOP: return "BISHOP";
+    case ROOK: return "ROOK";
+    case QUEEN: return "QUEEN";
+    case FORWARD_BLOCKED_BACKWARD: return "FORWARD_BLOCKED_BACKWARD";
+    case FORWARD_CONTROLLED_BACKWARD: return "FORWARD_CONTROLLED_BACKWARD";
+    case FREE_TO_ADV_BACKWARD: return "FREE_TO_ADV_BACKWARD";
+    case PAWN_SHIELD_BONUS: return "PAWN_SHIELD_BONUS";
+    case DIRECTLY_ON_OPEN_FILE_NEXT_TO_OPEN_PENALTY: return "DIRECTLY_ON_OPEN_FILE_NEXT_TO_OPEN_PENALTY";
+    case DIRECTLY_ON_OPEN_FILE_NOT_NEXT_TO_OPEN_PENALTY: return "DIRECTLY_ON_OPEN_FILE_NOT_NEXT_TO_OPEN_PENALTY";
+    case NEXT_TO_OPEN_FILE_PENALTY: return "NEXT_TO_OPEN_FILE_PENALTY";
+    case DIRECTLY_ON_SEMI_OPEN_FILE_NEXT_TO_OPEN_PENALTY: return "DIRECTLY_ON_SEMI_OPEN_FILE_NEXT_TO_OPEN_PENALTY";
+    case DIRECTLY_ON_SEMI_OPEN_FILE_NOT_NEXT_TO_OPEN_PENALTY: return "DIRECTLY_ON_SEMI_OPEN_FILE_NOT_NEXT_TO_OPEN_PENALTY";
+    case NEXT_TO_SEMI_OPEN_FILE_PENALTY: return "NEXT_TO_SEMI_OPEN_FILE_PENALTY";
+    case ROOK_ON_OPEN_FILE: return "ROOK_ON_OPEN_FILE";
+    case ROOK_ON_SEMI_OPEN_FILE: return "ROOK_ON_SEMI_OPEN_FILE";
+    case CONNECTED_ROOKS: return "CONNECTED_ROOKS";
+    case BISHOP_PAIR: return "BISHOP_PAIR";
+    case BAD_BISHOP_BLOCKED: return "BAD_BISHOP_BLOCKED";
+    case BAD_BISHOP_UNBLOCKED: return "BAD_BISHOP_UNBLOCKED";
+    case TRAPPED_BISHOP: return "TRAPPED_BISHOP";
+    case TRAPPED_KNIGHT: return "TRAPPED_KNIGHT";
+    case FIANCHETTO_BISHOP: return "FIANCHETTO_BISHOP";
+    case BROKEN_FIANCHETTO: return "BROKEN_FIANCHETTO";
+    case BISHOP_OUTPOST_NO_OPPOSITE_BISHOP: return "BISHOP_OUTPOST_NO_OPPOSITE_BISHOP";
+    case BISHOP_OUTPOST_WITH_OPPOSITE_BISHOP: return "BISHOP_OUTPOST_WITH_OPPOSITE_BISHOP";
+    case KNIGHT_OUTPOST_NO_OPPOSITE_BISHOP: return "KNIGHT_OUTPOST_NO_OPPOSITE_BISHOP";
+    case KNIGHT_OUTPOST_WITH_OPPOSITE_BISHOP: return "KNIGHT_OUTPOST_WITH_OPPOSITE_BISHOP";
+    }
+
+    if (index >= PAWN_PST_START && index <= PAWN_PST_END) return "PAWN_PST_START+" + to_string(index - PAWN_PST_START);
+    if (index >= KNIGHT_PST_START && index <= KNIGHT_PST_END) return "KNIGHT_PST_START+" + to_string(index - KNIGHT_PST_START);
+    if (index >= BISHOP_PST_START && index <= BISHOP_PST_END) return "BISHOP_PST_START+" + to_string(index - BISHOP_PST_START);
+    if (index >= ROOK_PST_START && index <= ROOK_PST_END) return "ROOK_PST_START+" + to_string(index - ROOK_PST_START);
+    if (index >= QUEEN_PST_START && index <= QUEEN_PST_END) return "QUEEN_PST_START+" + to_string(index - QUEEN_PST_START);
+    if (index >= KING_PST_START && index <= KING_PST_END) return "KING_PST_START+" + to_string(index - KING_PST_START);
+    if (index >= PASSED_PAWNS_START && index <= PASSED_PAWNS_END) return "PASSED_PAWNS_START+" + to_string(index - PASSED_PAWNS_START);
+    if (index >= ISOLANI_START && index <= ISOLANI_END) return "ISOLANI_START+" + to_string(index - ISOLANI_START);
+    if (index >= BLOCKED_ISOLANI_START && index <= BLOCKED_ISOLANI_END) return "BLOCKED_ISOLANI_START+" + to_string(index - BLOCKED_ISOLANI_START);
+    if (index >= DOUBLE_PAWN_FILE_START && index <= DOUBLE_PAWN_FILE_END) return "DOUBLE_PAWN_FILE_START+" + to_string(index - DOUBLE_PAWN_FILE_START);
+    if (index >= NEXT_TO_OPEN_DIAGONAL_PENALTY_START && index <= NEXT_TO_OPEN_DIAGONAL_PENALTY_END) return "NEXT_TO_OPEN_DIAGONAL_PENALTY_START+" + to_string(index - NEXT_TO_OPEN_DIAGONAL_PENALTY_START);
+    if (index >= MOBILITY_START && index <= MOBILITY_END) return "MOBILITY_START+" + to_string(index - MOBILITY_START);
+    if (index >= ROOK_BEHIND_FREE_PAWN_START && index <= ROOK_BEHIND_FREE_PAWN_END) return "ROOK_BEHIND_FREE_PAWN_START+" + to_string(index - ROOK_BEHIND_FREE_PAWN_START);
+
+    return "PARAM_" + to_string(index);
+}
+
+static void print_parameter_non_zero_coverage(const parameters_t& parameters, const vector<Entry>& entries)
+{
+    vector<size_t> non_zero_counts(parameters.size(), 0);
+
+    for (const auto& entry : entries)
+    {
+        for (const auto& coefficient : entry.coefficients)
+        {
+            if (coefficient.index < 0)
+            {
+                continue;
+            }
+
+            const auto parameter_index = static_cast<size_t>(coefficient.index);
+            if (parameter_index < non_zero_counts.size())
+            {
+                non_zero_counts[parameter_index]++;
+            }
+        }
+    }
+
+    cout << "Parameter non-zero coverage:" << endl;
+    cout << "Total positions: " << entries.size() << endl;
+
+    size_t ever_non_zero = 0;
+    for (size_t i = 0; i < non_zero_counts.size(); i++)
+    {
+        const auto count = non_zero_counts[i];
+        if (count > 0)
+        {
+            ever_non_zero++;
+        }
+
+        const tune_t percentage = entries.empty()
+            ? static_cast<tune_t>(0)
+            : static_cast<tune_t>(100.0) * static_cast<tune_t>(count) / static_cast<tune_t>(entries.size());
+
+        const auto idx = static_cast<int>(i);
+        cout << "Param[" << i << "] " << get_parameter_name(idx) << ": "
+            << count << " / " << entries.size()
+            << " (" << percentage << "%)" << endl;
+    }
+
+    const tune_t used_percentage = parameters.empty()
+        ? static_cast<tune_t>(0)
+        : static_cast<tune_t>(100.0) * static_cast<tune_t>(ever_non_zero) / static_cast<tune_t>(parameters.size());
+
+    cout << "Parameters ever non-zero: " << ever_non_zero << " / " << parameters.size()
+        << " (" << used_percentage << "%)" << endl;
     cout << endl;
 }
 
@@ -515,6 +621,7 @@ static void compute_gradient(ThreadPool& thread_pool, parameters_t& gradient, co
     }
 }
 
+
 void Tuner::run(const std::vector<DataSource>& sources)
 {
     cout << "Starting tuning" << endl << endl;
@@ -541,6 +648,7 @@ void Tuner::run(const std::vector<DataSource>& sources)
     cout << "Data loading complete" << endl << endl;
 
     print_statistics(parameters, entries);
+    print_parameter_non_zero_coverage(parameters, entries);
 
     if constexpr (TuneEval::retune_from_zero)
     {
@@ -566,7 +674,7 @@ void Tuner::run(const std::vector<DataSource>& sources)
     }
     else
     {
-        cout << "Using predefined K = " << TuneEval::preferred_k <<  endl;
+        cout << "Using predefined K = " << TuneEval::preferred_k << endl;
         K = TuneEval::preferred_k;
     }
     cout << "K = " << K << endl;
@@ -584,14 +692,14 @@ void Tuner::run(const std::vector<DataSource>& sources)
     parameters_t momentum(parameters.size(), 0);
     parameters_t velocity(parameters.size(), 0);
 #endif
-    for ( int32_t epoch = 1; epoch < max_tune_epoch; epoch++)
+    for (int32_t epoch = 1; epoch < max_tune_epoch; epoch++)
     {
 #if TAPERED
         parameters_t gradient(parameters.size(), pair_t{});
 #else
         parameters_t gradient(parameters.size(), 0);
 #endif
-        
+
         compute_gradient(thread_pool, gradient, entries, parameters, K);
 
         constexpr tune_t beta1 = 0.9;
@@ -599,7 +707,7 @@ void Tuner::run(const std::vector<DataSource>& sources)
 
         for (int parameter_index = 0; parameter_index < parameters.size(); parameter_index++) {
 #if TAPERED
-            for(int phase_stage = 0; phase_stage < 2; phase_stage++)
+            for (int phase_stage = 0; phase_stage < 2; phase_stage++)
             {
                 const tune_t grad = -K / static_cast<tune_t>(400) * gradient[parameter_index][phase_stage] / static_cast<tune_t>(entries.size());
                 momentum[parameter_index][phase_stage] = beta1 * momentum[parameter_index][phase_stage] + (1 - beta1) * grad;
@@ -612,20 +720,20 @@ void Tuner::run(const std::vector<DataSource>& sources)
             velocity[parameter_index] = beta2 * velocity[parameter_index] + (1 - beta2) * pow(grad, 2);
             parameters[parameter_index] -= learning_rate * momentum[parameter_index] / (1e-8 + sqrt(velocity[parameter_index]));
 #endif
-            
+
         }
-        //TuneEval::normalize_pst(parameters);
+        TuneEval::normalize_pst(parameters);
         if (epoch % 250 == 0)
         {
             const auto elapsed_ms = duration_cast<milliseconds>(high_resolution_clock::now() - loop_start).count();
             const auto epochs_per_second = epoch * 1000.0 / elapsed_ms;
             const tune_t error = get_average_error(thread_pool, entries, parameters, K);
             print_elapsed(start);
-            cout << "Epoch " << epoch << " (" << epochs_per_second << " eps), error " << std::setprecision(17)<<error << ", LR " << learning_rate << endl;
-            if(epoch % 2000==0) TuneEval::print_parameters(parameters);
+            cout << "Epoch " << epoch << " (" << epochs_per_second << " eps), error " << std::setprecision(17) << error << ", LR " << learning_rate << endl;
+            if (epoch % 1000 == 0) TuneEval::print_parameters(parameters);
         }
 
-        if(epoch % TuneEval::learning_rate_drop_interval == 0)
+        if (epoch % TuneEval::learning_rate_drop_interval == 0)
         {
             learning_rate *= TuneEval::learning_rate_drop_ratio;
         }
