@@ -314,7 +314,7 @@ void eval_mobility(EvaluationResult& score, const EvalContext& ctx, Trace* trace
 					pieces &= pieces - 1;
 				}
 			}
-			addTerm<isTracing>(score,static_cast<EvalParam>(EvalParam::MOBILITY_START + to_int(pt)), mob_count, trace);
+			addTerm<isTracing>(score,static_cast<EvalParam>(EvalParam::MOBILITY_START + to_int(pt)-1), mob_count, trace);
 		}
 	}
 template<bool isTracing>
@@ -333,10 +333,12 @@ void eval_rook_activity(EvaluationResult& score, const EvalContext& ctx, Trace* 
 			if (passed == NO_SQUARE) continue;
 			if(color == Color::WHITE){
 				int count = popcount(ctx.get_pieces(color,PieceType::ROOK) & FORWARD_WAY_MASK[1][passed]);
+				int rrrr = rank(passed);
 				addTerm<isTracing>(score, static_cast<EvalParam>(EvalParam::ROOK_BEHIND_FREE_PAWN_START + rank(passed)), count, trace);
 			}
 			else{
 				int count = popcount(ctx.get_pieces(color, PieceType::ROOK) & FORWARD_WAY_MASK[0][passed]);
+				int rrr = flip_rank(passed);
 				addTerm<isTracing>(score, static_cast<EvalParam>(EvalParam::ROOK_BEHIND_FREE_PAWN_START + flip_rank(passed)), -count, trace);
 			}
 		}

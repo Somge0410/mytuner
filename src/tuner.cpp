@@ -310,7 +310,7 @@ static void print_parameter_non_zero_coverage(const parameters_t& parameters, co
                 continue;
             }
 
-            const auto parameter_index = PARAM_START+static_cast<size_t>(coefficient.index);
+            const auto parameter_index = static_cast<size_t>(coefficient.index);
             if (parameter_index < non_zero_counts.size())
             {
                 non_zero_counts[parameter_index]++;
@@ -324,7 +324,7 @@ static void print_parameter_non_zero_coverage(const parameters_t& parameters, co
     size_t ever_non_zero = 0;
     for (size_t i = 0; i < non_zero_counts.size(); i++)
     {
-        const auto count = non_zero_counts[i+PARAM_START];
+        const auto count = non_zero_counts[i];
         if (count > 0)
         {
             ever_non_zero++;
