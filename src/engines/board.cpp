@@ -59,8 +59,8 @@ void Board::parse_fen(const std::string& fen) {
         parse_fen_turn(fen_parts[1]);
         parse_fen_castling(fen_parts[2]);
         parse_fen_en_passant(fen_parts[3]);
-        parse_fen_half_move(fen_parts[4]);
-        parse_fen_move(fen_parts[5]);
+        //parse_fen_half_move(fen_parts[4]);
+        //parse_fen_move(fen_parts[5]);
 
     }
     else {

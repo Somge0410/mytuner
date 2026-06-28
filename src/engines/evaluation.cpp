@@ -7,7 +7,7 @@ PawnEvalEntry& get_pawn_entry(size_t idx) {
 	}
 	return (*pawn_evaluation_table)[idx];
 }
-bool trace_eval_agree(const Board& board, const EvaluationResult weights[PARAM_COUNT1]) {
+bool trace_eval_agree(const Board& board, const EvaluationResult weights[PARAM_COUNT]) {
 	Trace trace;
 	int eval = evaluate<true>(board, &trace);
 	int trace_eval = get_trace_eval(&trace, weights, board.get_game_phase());
@@ -26,8 +26,6 @@ int evaluate(const Board& board, Trace* trace, uint8_t terms_mask) {
 	eval_pawns<true>(score, ctx, trace);
 	eval_king_safety<true>(score, ctx, trace);
 	eval_mobility<true>(score, ctx, trace);
-
-	add_score = score;
 	eval_rook_activity<true>(score, ctx, trace);
 	eval_minor_pieces<true>(score, ctx, trace);
 	return tapered(add_score, board.get_game_phase());

@@ -95,7 +95,7 @@ enum EvalParam {
 	PARAM_COUNT
 };
 
-constexpr int PARAM_START = ROOK_BEHIND_FREE_PAWN_START;
+constexpr int PARAM_START = PAWN;
 constexpr int PARAM_END = KNIGHT_OUTPOST_WITH_OPPOSITE_BISHOP + 1;
 constexpr int PARAM_LENGTH = PARAM_END - PARAM_START;
 extern EvaluationResult EvalWeights[PARAM_COUNT];
