@@ -160,12 +160,19 @@ namespace {
         if (index >= QUEEN_PST_START && index <= QUEEN_PST_END) return "QUEEN_PST_START+" + std::to_string(index - QUEEN_PST_START);
         if (index >= KING_PST_START && index <= KING_PST_END) return "KING_PST_START+" + std::to_string(index - KING_PST_START);
         if (index >= PASSED_PAWNS_START && index <= PASSED_PAWNS_END) return "PASSED_PAWNS_START+" + std::to_string(index - PASSED_PAWNS_START);
+		if (index >= PROTECTED_PASSED_PAWNS_START && index <= PROTECTED_PASSED_PAWNS_END) return "PROTECTED_PASSED_PAWNS_START+" + std::to_string(index - PROTECTED_PASSED_PAWNS_START);
+		if (index >= BLOCKED_FREE_PAWN_START && index <= BLOCKED_FREE_PAWN_END) return "BLOCKED_FREE_PAWN_START+" + std::to_string(index - BLOCKED_FREE_PAWN_START);
+		if (index >= CANT_REACHED_BY_ENEMY_KING_START && index <= CANT_REACHED_BY_ENEMY_KING_END) return "CANT_REACHED_BY_ENEMY_KING_START+" + std::to_string(index - CANT_REACHED_BY_ENEMY_KING_START);
+		if (index >= OWN_KING_IS_CLOSE_START && index <= OWN_KING_IS_CLOSE_END) return "OWN_KING_IS_CLOSE_START+" + std::to_string(index - OWN_KING_IS_CLOSE_START);
+		if (index >= OWN_KING_IS_FAR_START && index <= OWN_KING_IS_FAR_END) return "OWN_KING_IS_FAR_START+" + std::to_string(index - OWN_KING_IS_FAR_START);
+		if (index >= ROOK_BEHIND_FREE_PAWN_START && index <= ROOK_BEHIND_FREE_PAWN_END) return "ROOK_BEHIND_FREE_PAWN_START+" + std::to_string(index - ROOK_BEHIND_FREE_PAWN_START);
+		if (index >= OP_ROOK_BEHIND_FREE_PAWN_START && index <= OP_ROOK_BEHIND_FREE_PAWN_END) return "OP_ROOK_BEHIND_FREE_PAWN_START+" + std::to_string(index - OP_ROOK_BEHIND_FREE_PAWN_START);
         if (index >= ISOLANI_START && index <= ISOLANI_END) return "ISOLANI_START+" + std::to_string(index - ISOLANI_START);
         if (index >= BLOCKED_ISOLANI_START && index <= BLOCKED_ISOLANI_END) return "BLOCKED_ISOLANI_START+" + std::to_string(index - BLOCKED_ISOLANI_START);
+        if (index >= PROTECTED_ISOLANI_START && index <= PROTECTED_ISOLANI_END) return "PROTECTED_ISOLANI_START+" + std::to_string(index - PROTECTED_ISOLANI_START);
         if (index >= DOUBLE_PAWN_FILE_START && index <= DOUBLE_PAWN_FILE_END) return "DOUBLE_PAWN_FILE_START+" + std::to_string(index - DOUBLE_PAWN_FILE_START);
         if (index >= NEXT_TO_OPEN_DIAGONAL_PENALTY_START && index <= NEXT_TO_OPEN_DIAGONAL_PENALTY_END) return "NEXT_TO_OPEN_DIAGONAL_PENALTY_START+" + std::to_string(index - NEXT_TO_OPEN_DIAGONAL_PENALTY_START);
         if (index >= MOBILITY_START && index <= MOBILITY_END) return "MOBILITY_START+" + std::to_string(index - MOBILITY_START);
-        if (index >= ROOK_BEHIND_FREE_PAWN_START && index <= ROOK_BEHIND_FREE_PAWN_END) return "ROOK_BEHIND_FREE_PAWN_START+" + std::to_string(index - ROOK_BEHIND_FREE_PAWN_START);
 
         return "PARAM_" + std::to_string(index);
     }
@@ -204,9 +211,7 @@ void TuneEval::print_parameters(parameters_t& parameters) {
         // Check if the current index is the start of an 8x8 piece-square table
         if (idx == PAWN_PST_START || idx == KNIGHT_PST_START ||
             idx == BISHOP_PST_START || idx == ROOK_PST_START ||
-            idx == QUEEN_PST_START || idx == KING_PST_START ||
-            idx == PASSED_PAWNS_START || idx == ISOLANI_START ||
-            idx == BLOCKED_ISOLANI_START)
+            idx == QUEEN_PST_START || idx == KING_PST_START )
         {
             std::cout << "\t// " << get_parameter_name(idx) << "\n";
 
@@ -228,6 +233,22 @@ void TuneEval::print_parameters(parameters_t& parameters) {
             // The for-loop will do ++idx, advancing it to a total of 64 (the next parameter block)
             idx += 63;
         }
+        else if(idx==PASSED_PAWNS_START || idx==PROTECTED_PASSED_PAWNS_START ||
+                idx==BLOCKED_FREE_PAWN_START || idx==CANT_REACHED_BY_ENEMY_KING_START||
+			idx == OWN_KING_IS_CLOSE_START || idx == OWN_KING_IS_FAR_START || 
+                idx==ROOK_BEHIND_FREE_PAWN_START || idx==OP_ROOK_BEHIND_FREE_PAWN_START ||
+            idx==ISOLANI_START|| idx==BLOCKED_ISOLANI_START || idx==PROTECTED_ISOLANI_START)
+        {
+            std::cout << "\t// " << get_parameter_name(idx) << "\n";
+            for (int i = 0; i < 4; ++i)
+            {
+                const auto mg_value = static_cast<int>(std::round(get_phase_value(parameters, idx + i, mg) * mg_scale));
+                const auto eg_value = static_cast<int>(std::round(get_phase_value(parameters, idx + i, eg) * eg_scale));
+                std::cout << "\t{" << mg_value << ", " << eg_value << "},\t// " << get_parameter_name(idx + i) << '\n';
+            }
+            // Advance the index by 7. The for-loop will do ++idx, advancing it to a total of 8 (the next parameter block)
+            idx += 3;
+		}
         else
         {
             // Standard formatting for single parameters
