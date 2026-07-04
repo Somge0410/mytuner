@@ -141,53 +141,53 @@ void eval_iso_passed(EvaluationResult& score, EvalContext& ctx, Trace* trace) {
 					if (enemy_king_distance_to_promo_sq > pawn_distance_to_promo_sq) {
 						addTerm<isTracing>(score, static_cast<EvalParam>(EvalParam::CANT_REACHED_BY_ENEMY_KING_START + bucket), color == 0 ? 1 : -1, trace);
 					}
-					// Check if own king is close
-					int own_king_distance_to_pawn = king_distance(ctx.board.get_king_square(static_cast<Color>(color)), pawn_square);
-					if (own_king_distance_to_pawn <= 2) {
-						addTerm<isTracing>(score, static_cast<EvalParam>(EvalParam::CANT_REACHED_BY_ENEMY_KING_START + bucket), color == 0 ? 1 : -1, trace);
-					}
-					if (own_king_distance_to_pawn >= 5) {
-						addTerm<isTracing>(score, static_cast<EvalParam>(EvalParam::OWN_KING_IS_FAR_START + bucket), color == 0 ? 1 : -1, trace);
-					}
-					//Check if Rook is behing pawn
-					uint64_t rooks = ctx.board.get_pieces(static_cast<Color>(color), PieceType::ROOK) & FORWARD_WAY_MASK[ecolor][pawn_square];
-					while (rooks) {
-						int rook_square = get_lsb(rooks);
-						if (bit64(pawn_square) & get_rook_attacks(rook_square, ctx.board.get_all_pieces())) {
-							addTerm<isTracing>(score, static_cast<EvalParam>(EvalParam::ROOK_BEHIND_FREE_PAWN_START + bucket), color == 0 ? 1 : -1, trace);
-							break;
-						}
-						rooks &= rooks - 1;
-					}
-					//Check if Opponent Rook is behind pawn
-					uint64_t op_rooks = ctx.board.get_pieces(static_cast<Color>(ecolor), PieceType::ROOK) & FORWARD_WAY_MASK[ecolor][pawn_square];
-					while (op_rooks) {
-						int rook_square = get_lsb(op_rooks);
-						if (bit64(pawn_square) & get_rook_attacks(rook_square, ctx.board.get_all_pieces())) {
-							addTerm<isTracing>(score, static_cast<EvalParam>(EvalParam::OP_ROOK_BEHIND_FREE_PAWN_START + bucket), color == 0 ? 1 : -1, trace);
-							break;
-						}
-						op_rooks &= op_rooks - 1;
-					}
-					pawns &= pawns - 1;
-					continue;
 				}
-				if ((ctx.board.get_pieces(static_cast<Color>(color), PieceType::PAWN) & ADJACENT_FILE_MASK[file_index]) == 0)
-				{
-					ctx.isolated[color] |= (1ULL << pawn_square);
-					int bucket = ISOLATED_PAWN_BUCKET[color == 0 ? pawn_square : flip_square(pawn_square)];
-					if (is_occupied(get_forward_square(pawn_square, static_cast<Color>(color)), ctx.board.get_all_pieces()))
-						addTerm<isTracing>(score, static_cast<EvalParam>(EvalParam::BLOCKED_ISOLANI_START + bucket), color == 0 ? 1 : -1, trace);
-					else
-						addTerm<isTracing>(score, static_cast<EvalParam>(EvalParam::ISOLANI_START + pawn_square), color == 0 ? 1 : -1, trace);
-					uint64_t defends = ctx.board.get_attacks_for_color(static_cast<Color>(color)) & bit64(pawn_square);
-					if (defends != 0) {
-						addTerm<isTracing>(score, static_cast<EvalParam>(EvalParam::PROTECTED_PASSED_PAWNS_START + bucket), color == 0 ? 1 : -1, trace);
+				// Check if own king is close
+				int own_king_distance_to_pawn = king_distance(ctx.board.get_king_square(static_cast<Color>(color)), pawn_square);
+				if (own_king_distance_to_pawn <= 2) {
+					addTerm<isTracing>(score, static_cast<EvalParam>(EvalParam::OWN_KING_IS_CLOSE_START + bucket), color == 0 ? 1 : -1, trace);
+				}
+				if (own_king_distance_to_pawn >= 5) {
+					addTerm<isTracing>(score, static_cast<EvalParam>(EvalParam::OWN_KING_IS_FAR_START + bucket), color == 0 ? 1 : -1, trace);
+				}
+				//Check if Rook is behing pawn
+				uint64_t rooks = ctx.board.get_pieces(static_cast<Color>(color), PieceType::ROOK) & FORWARD_WAY_MASK[ecolor][pawn_square];
+				while (rooks) {
+					int rook_square = get_lsb(rooks);
+					if (bit64(pawn_square) & get_rook_attacks(rook_square, ctx.board.get_all_pieces())) {
+						addTerm<isTracing>(score, static_cast<EvalParam>(EvalParam::ROOK_BEHIND_FREE_PAWN_START + bucket), color == 0 ? 1 : -1, trace);
+						break;
 					}
-
+					rooks &= rooks - 1;
+				}
+				//Check if Opponent Rook is behind pawn
+				uint64_t op_rooks = ctx.board.get_pieces(static_cast<Color>(ecolor), PieceType::ROOK) & FORWARD_WAY_MASK[ecolor][pawn_square];
+				while (op_rooks) {
+					int rook_square = get_lsb(op_rooks);
+					if (bit64(pawn_square) & get_rook_attacks(rook_square, ctx.board.get_all_pieces())) {
+						addTerm<isTracing>(score, static_cast<EvalParam>(EvalParam::OP_ROOK_BEHIND_FREE_PAWN_START + bucket), color == 0 ? 1 : -1, trace);
+						break;
+					}
+					op_rooks &= op_rooks - 1;
 				}
 				pawns &= pawns - 1;
+				continue;
 			}
+			if ((ctx.board.get_pieces(static_cast<Color>(color), PieceType::PAWN) & ADJACENT_FILE_MASK[file_index]) == 0)
+			{
+				ctx.isolated[color] |= (1ULL << pawn_square);
+				int bucket = ISOLATED_PAWN_BUCKET[color == 0 ? pawn_square : flip_square(pawn_square)];
+				if (is_occupied(get_forward_square(pawn_square, static_cast<Color>(color)), ctx.board.get_all_pieces()))
+					addTerm<isTracing>(score, static_cast<EvalParam>(EvalParam::BLOCKED_ISOLANI_START + bucket), color == 0 ? 1 : -1, trace);
+				else
+					addTerm<isTracing>(score, static_cast<EvalParam>(EvalParam::ISOLANI_START + bucket), color == 0 ? 1 : -1, trace);
+				uint64_t defends = ctx.board.get_attacks_for_color(static_cast<Color>(color)) & bit64(pawn_square);
+				if (defends != 0) {
+					addTerm<isTracing>(score, static_cast<EvalParam>(EvalParam::PROTECTED_PASSED_PAWNS_START + bucket), color == 0 ? 1 : -1, trace);
+				}
+
+			}
+			pawns &= pawns - 1;
 		}
 	}
 }

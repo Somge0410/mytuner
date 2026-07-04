@@ -110,6 +110,10 @@ enum EvalParam {
 };
 
 extern EvaluationResult EvalWeights[PARAM_COUNT];
+
+constexpr int PARAM_START = PAWN;
+constexpr int PARAM_END = KNIGHT_OUTPOST_WITH_OPPOSITE_BISHOP + 1;
+constexpr int PARAM_LENGTH = PARAM_END - PARAM_START;
 inline EvaluationResult get_piece_values(const Color& color, const PieceType& piece) {
 	EvaluationResult result = { 0,0 };
 	if (piece == PieceType::PAWN) {

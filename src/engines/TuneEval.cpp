@@ -240,14 +240,18 @@ void TuneEval::print_parameters(parameters_t& parameters) {
             idx==ISOLANI_START|| idx==BLOCKED_ISOLANI_START || idx==PROTECTED_ISOLANI_START)
         {
             std::cout << "\t// " << get_parameter_name(idx) << "\n";
-            for (int i = 0; i < 4; ++i)
-            {
-                const auto mg_value = static_cast<int>(std::round(get_phase_value(parameters, idx + i, mg) * mg_scale));
-                const auto eg_value = static_cast<int>(std::round(get_phase_value(parameters, idx + i, eg) * eg_scale));
-                std::cout << "\t{" << mg_value << ", " << eg_value << "},\t// " << get_parameter_name(idx + i) << '\n';
-            }
-            // Advance the index by 7. The for-loop will do ++idx, advancing it to a total of 8 (the next parameter block)
-            idx += 3;
+            for(int row=0;row<4;++row){
+                std::cout << "\t";
+                for(int col=0;col<4;++col) {
+                    int sq_idx = idx + row * 4 + col;
+                    int mg_value = static_cast<int>(std::round(get_phase_value(parameters, sq_idx, mg) * mg_scale));
+                    int eg_value = static_cast<int>(std::round(get_phase_value(parameters, sq_idx, eg) * eg_scale));
+                    std::cout << "{" << std::setw(3) << mg_value << ", " << std::setw(3) << eg_value << "}, ";
+                }
+                std::cout << "\n"; // Newline after every row
+			}
+            // Advance the index by 15. The for-loop will do ++idx, advancing it to a total of 16 (the next parameter block)
+            idx += 15;
 		}
         else
         {
