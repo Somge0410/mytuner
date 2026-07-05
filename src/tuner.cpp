@@ -254,9 +254,6 @@ static string get_parameter_name(int index)
     case BISHOP: return "BISHOP";
     case ROOK: return "ROOK";
     case QUEEN: return "QUEEN";
-    case FORWARD_BLOCKED_BACKWARD: return "FORWARD_BLOCKED_BACKWARD";
-    case FORWARD_CONTROLLED_BACKWARD: return "FORWARD_CONTROLLED_BACKWARD";
-    case FREE_TO_ADV_BACKWARD: return "FREE_TO_ADV_BACKWARD";
     case PAWN_SHIELD_BONUS: return "PAWN_SHIELD_BONUS";
     case DIRECTLY_ON_OPEN_FILE_NEXT_TO_OPEN_PENALTY: return "DIRECTLY_ON_OPEN_FILE_NEXT_TO_OPEN_PENALTY";
     case DIRECTLY_ON_OPEN_FILE_NOT_NEXT_TO_OPEN_PENALTY: return "DIRECTLY_ON_OPEN_FILE_NOT_NEXT_TO_OPEN_PENALTY";
@@ -294,9 +291,13 @@ static string get_parameter_name(int index)
     if (index >= OWN_KING_IS_FAR_START && index <= OWN_KING_IS_FAR_END) return "OWN_KING_IS_FAR_START+" + std::to_string(index - OWN_KING_IS_FAR_START);
     if (index >= ROOK_BEHIND_FREE_PAWN_START && index <= ROOK_BEHIND_FREE_PAWN_END) return "ROOK_BEHIND_FREE_PAWN_START+" + std::to_string(index - ROOK_BEHIND_FREE_PAWN_START);
     if (index >= OP_ROOK_BEHIND_FREE_PAWN_START && index <= OP_ROOK_BEHIND_FREE_PAWN_END) return "OP_ROOK_BEHIND_FREE_PAWN_START+" + std::to_string(index - OP_ROOK_BEHIND_FREE_PAWN_START);
+    if (index >= ISOLATED_PASSED_PAWN_START && index <= ISOLATED_PASSED_PAWN_END) return "ISOLATED_PASSED_PAWN_START+" + std::to_string(index - ISOLATED_PASSED_PAWN_START);
     if (index >= ISOLANI_START && index <= ISOLANI_END) return "ISOLANI_START+" + std::to_string(index - ISOLANI_START);
     if (index >= BLOCKED_ISOLANI_START && index <= BLOCKED_ISOLANI_END) return "BLOCKED_ISOLANI_START+" + std::to_string(index - BLOCKED_ISOLANI_START);
     if (index >= PROTECTED_ISOLANI_START && index <= PROTECTED_ISOLANI_END) return "PROTECTED_ISOLANI_START+" + std::to_string(index - PROTECTED_ISOLANI_START);
+    if (index >= FORWARD_BLOCKED_BACKWARD_START && index <= FORWARD_BLOCKED_BACKWARD_END) return "FORWARD_BLOCKED_BACKWARD_START+" + std::to_string(index - FORWARD_BLOCKED_BACKWARD_START);
+    if (index >= FORWARD_CONTROLLED_BACKWARD_START && index <= FORWARD_CONTROLLED_BACKWARD_END) return "FORWARD_CONTROLLED_BACKWARD_START+" + std::to_string(index - FORWARD_CONTROLLED_BACKWARD_START);
+    if (index >= FREE_TO_ADV_BACKWARD_START && index <= FREE_TO_ADV_BACKWARD_END) return "FREE_TO_ADV_BACKWARD_START+" + std::to_string(index - FREE_TO_ADV_BACKWARD_START);
     if (index >= DOUBLE_PAWN_FILE_START && index <= DOUBLE_PAWN_FILE_END) return "DOUBLE_PAWN_FILE_START+" + std::to_string(index - DOUBLE_PAWN_FILE_START);
     if (index >= NEXT_TO_OPEN_DIAGONAL_PENALTY_START && index <= NEXT_TO_OPEN_DIAGONAL_PENALTY_END) return "NEXT_TO_OPEN_DIAGONAL_PENALTY_START+" + std::to_string(index - NEXT_TO_OPEN_DIAGONAL_PENALTY_START);
     if (index >= MOBILITY_START && index <= MOBILITY_END) return "MOBILITY_START+" + std::to_string(index - MOBILITY_START);
