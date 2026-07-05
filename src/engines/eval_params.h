@@ -110,9 +110,9 @@ enum EvalParam {
 };
 
 extern EvaluationResult EvalWeights[PARAM_COUNT];
-
+constexpr int end_points[] = {KING_PST_END + 1, DOUBLE_PAWN_FILE_END + 1, NEXT_TO_OPEN_DIAGONAL_PENALTY_END + 1, CONNECTED_ROOKS+1, KNIGHT_OUTPOST_WITH_OPPOSITE_BISHOP + 1};
 constexpr int PARAM_START = PAWN;
-constexpr int PARAM_END = KNIGHT_OUTPOST_WITH_OPPOSITE_BISHOP + 1;
+constexpr int PARAM_END = end_points[4];
 constexpr int PARAM_LENGTH = PARAM_END - PARAM_START;
 inline EvaluationResult get_piece_values(const Color& color, const PieceType& piece) {
 	EvaluationResult result = { 0,0 };

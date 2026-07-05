@@ -280,21 +280,28 @@ static string get_parameter_name(int index)
     case KNIGHT_OUTPOST_WITH_OPPOSITE_BISHOP: return "KNIGHT_OUTPOST_WITH_OPPOSITE_BISHOP";
     }
 
-    if (index >= PAWN_PST_START && index <= PAWN_PST_END) return "PAWN_PST_START+" + to_string(index - PAWN_PST_START);
-    if (index >= KNIGHT_PST_START && index <= KNIGHT_PST_END) return "KNIGHT_PST_START+" + to_string(index - KNIGHT_PST_START);
-    if (index >= BISHOP_PST_START && index <= BISHOP_PST_END) return "BISHOP_PST_START+" + to_string(index - BISHOP_PST_START);
-    if (index >= ROOK_PST_START && index <= ROOK_PST_END) return "ROOK_PST_START+" + to_string(index - ROOK_PST_START);
-    if (index >= QUEEN_PST_START && index <= QUEEN_PST_END) return "QUEEN_PST_START+" + to_string(index - QUEEN_PST_START);
-    if (index >= KING_PST_START && index <= KING_PST_END) return "KING_PST_START+" + to_string(index - KING_PST_START);
-    if (index >= PASSED_PAWNS_START && index <= PASSED_PAWNS_END) return "PASSED_PAWNS_START+" + to_string(index - PASSED_PAWNS_START);
-    if (index >= ISOLANI_START && index <= ISOLANI_END) return "ISOLANI_START+" + to_string(index - ISOLANI_START);
-    if (index >= BLOCKED_ISOLANI_START && index <= BLOCKED_ISOLANI_END) return "BLOCKED_ISOLANI_START+" + to_string(index - BLOCKED_ISOLANI_START);
-    if (index >= DOUBLE_PAWN_FILE_START && index <= DOUBLE_PAWN_FILE_END) return "DOUBLE_PAWN_FILE_START+" + to_string(index - DOUBLE_PAWN_FILE_START);
-    if (index >= NEXT_TO_OPEN_DIAGONAL_PENALTY_START && index <= NEXT_TO_OPEN_DIAGONAL_PENALTY_END) return "NEXT_TO_OPEN_DIAGONAL_PENALTY_START+" + to_string(index - NEXT_TO_OPEN_DIAGONAL_PENALTY_START);
-    if (index >= MOBILITY_START && index <= MOBILITY_END) return "MOBILITY_START+" + to_string(index - MOBILITY_START);
-    if (index >= ROOK_BEHIND_FREE_PAWN_START && index <= ROOK_BEHIND_FREE_PAWN_END) return "ROOK_BEHIND_FREE_PAWN_START+" + to_string(index - ROOK_BEHIND_FREE_PAWN_START);
+    if (index >= PAWN_PST_START && index <= PAWN_PST_END) return "PAWN_PST_START+" + std::to_string(index - PAWN_PST_START);
+    if (index >= KNIGHT_PST_START && index <= KNIGHT_PST_END) return "KNIGHT_PST_START+" + std::to_string(index - KNIGHT_PST_START);
+    if (index >= BISHOP_PST_START && index <= BISHOP_PST_END) return "BISHOP_PST_START+" + std::to_string(index - BISHOP_PST_START);
+    if (index >= ROOK_PST_START && index <= ROOK_PST_END) return "ROOK_PST_START+" + std::to_string(index - ROOK_PST_START);
+    if (index >= QUEEN_PST_START && index <= QUEEN_PST_END) return "QUEEN_PST_START+" + std::to_string(index - QUEEN_PST_START);
+    if (index >= KING_PST_START && index <= KING_PST_END) return "KING_PST_START+" + std::to_string(index - KING_PST_START);
+    if (index >= PASSED_PAWNS_START && index <= PASSED_PAWNS_END) return "PASSED_PAWNS_START+" + std::to_string(index - PASSED_PAWNS_START);
+    if (index >= PROTECTED_PASSED_PAWNS_START && index <= PROTECTED_PASSED_PAWNS_END) return "PROTECTED_PASSED_PAWNS_START+" + std::to_string(index - PROTECTED_PASSED_PAWNS_START);
+    if (index >= BLOCKED_FREE_PAWN_START && index <= BLOCKED_FREE_PAWN_END) return "BLOCKED_FREE_PAWN_START+" + std::to_string(index - BLOCKED_FREE_PAWN_START);
+    if (index >= CANT_REACHED_BY_ENEMY_KING_START && index <= CANT_REACHED_BY_ENEMY_KING_END) return "CANT_REACHED_BY_ENEMY_KING_START+" + std::to_string(index - CANT_REACHED_BY_ENEMY_KING_START);
+    if (index >= OWN_KING_IS_CLOSE_START && index <= OWN_KING_IS_CLOSE_END) return "OWN_KING_IS_CLOSE_START+" + std::to_string(index - OWN_KING_IS_CLOSE_START);
+    if (index >= OWN_KING_IS_FAR_START && index <= OWN_KING_IS_FAR_END) return "OWN_KING_IS_FAR_START+" + std::to_string(index - OWN_KING_IS_FAR_START);
+    if (index >= ROOK_BEHIND_FREE_PAWN_START && index <= ROOK_BEHIND_FREE_PAWN_END) return "ROOK_BEHIND_FREE_PAWN_START+" + std::to_string(index - ROOK_BEHIND_FREE_PAWN_START);
+    if (index >= OP_ROOK_BEHIND_FREE_PAWN_START && index <= OP_ROOK_BEHIND_FREE_PAWN_END) return "OP_ROOK_BEHIND_FREE_PAWN_START+" + std::to_string(index - OP_ROOK_BEHIND_FREE_PAWN_START);
+    if (index >= ISOLANI_START && index <= ISOLANI_END) return "ISOLANI_START+" + std::to_string(index - ISOLANI_START);
+    if (index >= BLOCKED_ISOLANI_START && index <= BLOCKED_ISOLANI_END) return "BLOCKED_ISOLANI_START+" + std::to_string(index - BLOCKED_ISOLANI_START);
+    if (index >= PROTECTED_ISOLANI_START && index <= PROTECTED_ISOLANI_END) return "PROTECTED_ISOLANI_START+" + std::to_string(index - PROTECTED_ISOLANI_START);
+    if (index >= DOUBLE_PAWN_FILE_START && index <= DOUBLE_PAWN_FILE_END) return "DOUBLE_PAWN_FILE_START+" + std::to_string(index - DOUBLE_PAWN_FILE_START);
+    if (index >= NEXT_TO_OPEN_DIAGONAL_PENALTY_START && index <= NEXT_TO_OPEN_DIAGONAL_PENALTY_END) return "NEXT_TO_OPEN_DIAGONAL_PENALTY_START+" + std::to_string(index - NEXT_TO_OPEN_DIAGONAL_PENALTY_START);
+    if (index >= MOBILITY_START && index <= MOBILITY_END) return "MOBILITY_START+" + std::to_string(index - MOBILITY_START);
 
-    return "PARAM_" + to_string(index);
+    return "PARAM_" + std::to_string(index);
 }
 
 static void print_parameter_non_zero_coverage(const parameters_t& parameters, const vector<Entry>& entries)

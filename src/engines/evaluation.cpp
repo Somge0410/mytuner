@@ -30,7 +30,7 @@ int evaluate(const Board& board, Trace* trace, uint8_t terms_mask) {
 	eval_mobility<isTracing>(score, ctx, trace);
 	eval_rook_activity<isTracing>(score, ctx, trace);
 	eval_minor_pieces<isTracing>(score, ctx, trace);
-	return tapered(score, board.get_game_phase());
+	return tapered({ 0,0 }, board.get_game_phase());
 
 }
 template int evaluate<false>(const Board& board, Trace* trace, uint8_t terms_mask);
@@ -113,7 +113,7 @@ void eval_iso_passed(EvaluationResult& score, EvalContext& ctx, Trace* trace) {
 		{
 			int pawn_square = get_lsb(pawns);
 			int file_index = pawn_square % 8;
-			int rank_index = color == 0 ? pawn_square / 8 : 7 - pawn_square / 8;
+			int rank_index = rank(pawn_square);
 			int bucket = PASSED_PAWN_BUCKET[color == 0 ? pawn_square : flip_square(pawn_square)];
 			if ((ctx.board.get_pieces(static_cast<Color>(ecolor), PieceType::PAWN) & PASSED_PAWN_MASK[color][pawn_square]) == 0)
 			{
@@ -136,7 +136,7 @@ void eval_iso_passed(EvaluationResult& score, EvalContext& ctx, Trace* trace) {
 				if (block_count == 0) {
 					int promo_square = get_promotion_square(pawn_square, static_cast<Color>(color));
 					int enemy_king_distance_to_promo_sq = king_distance(ctx.board.get_king_square(static_cast<Color>(ecolor)), promo_square);
-					int pawn_distance_to_promo_sq = color == 0 ? 7 - rank_index : rank_index;
+					int pawn_distance_to_promo_sq = (color==0) ? (7-rank_index) :rank_index;
 					if (ctx.board.get_turn() == static_cast<Color>(ecolor)) enemy_king_distance_to_promo_sq--;
 					if (enemy_king_distance_to_promo_sq > pawn_distance_to_promo_sq) {
 						addTerm<isTracing>(score, static_cast<EvalParam>(EvalParam::CANT_REACHED_BY_ENEMY_KING_START + bucket), color == 0 ? 1 : -1, trace);
@@ -183,7 +183,7 @@ void eval_iso_passed(EvaluationResult& score, EvalContext& ctx, Trace* trace) {
 					addTerm<isTracing>(score, static_cast<EvalParam>(EvalParam::ISOLANI_START + bucket), color == 0 ? 1 : -1, trace);
 				uint64_t defends = ctx.board.get_attacks_for_color(static_cast<Color>(color)) & bit64(pawn_square);
 				if (defends != 0) {
-					addTerm<isTracing>(score, static_cast<EvalParam>(EvalParam::PROTECTED_PASSED_PAWNS_START + bucket), color == 0 ? 1 : -1, trace);
+					addTerm<isTracing>(score, static_cast<EvalParam>(EvalParam::PROTECTED_ISOLANI_START + bucket), color == 0 ? 1 : -1, trace);
 				}
 
 			}
