@@ -30,7 +30,7 @@ int evaluate(const Board& board, Trace* trace, uint8_t terms_mask) {
 	eval_mobility<isTracing>(score, ctx, trace);
 	eval_rook_activity<isTracing>(score, ctx, trace);
 	eval_minor_pieces<isTracing>(score, ctx, trace);
-	return tapered(score, board.get_game_phase());
+	return tapered({ 0,0 }, board.get_game_phase());
 
 }
 template int evaluate<false>(const Board& board, Trace* trace, uint8_t terms_mask);
