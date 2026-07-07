@@ -170,6 +170,8 @@ void eval_iso_passed(EvaluationResult& score, EvalContext& ctx, Trace* trace) {
 					}
 					op_rooks &= op_rooks - 1;
 				}
+				pawns &= pawns - 1;
+				continue;
 			}
 			if ((ctx.board.get_pieces(static_cast<Color>(color), PieceType::PAWN) & ADJACENT_FILE_MASK[file_index]) == 0)
 			{
@@ -181,13 +183,7 @@ void eval_iso_passed(EvaluationResult& score, EvalContext& ctx, Trace* trace) {
 					addTerm<isTracing>(score, static_cast<EvalParam>(EvalParam::ISOLANI_START + bucket), color == 0 ? 1 : -1, trace);
 				uint64_t defends = ctx.board.get_attacks_for_color(static_cast<Color>(color)) & bit64(pawn_square);
 				if (defends != 0) {
-					if ((ctx.passed[color] & bit64(pawn_square)) != 0) {
-
-						//addTerm<isTracing>(score, static_cast<EvalParam>(EvalParam::PROTECTED_PASSED_PAWNS_START + bucket), color == 0 ? 1 : -1, trace);
-					}
-					else {
-						//addTerm<isTracing>(score, static_cast<EvalParam>(EvalParam::PROTECTED_ISOLANI_START + bucket), color == 0 ? 1 : -1, trace);
-					}
+					//addTerm<isTracing>(score, static_cast<EvalParam>(EvalParam::PROTECTED_PASSED_PAWNS_START + bucket), color == 0 ? 1 : -1, trace);
 				}
 
 			}
