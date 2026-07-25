@@ -1,4 +1,4 @@
-#include "tuner.h"
+ï»¿#include "tuner.h"
 #include "config.h"
 #include "threadpool.h"
 #include "TuneEval.h"
@@ -257,13 +257,38 @@ static string get_parameter_name(int index)
     case FORWARD_BLOCKED_BACKWARD: return "FORWARD_BLOCKED_BACKWARD";
     case FORWARD_CONTROLLED_BACKWARD: return "FORWARD_CONTROLLED_BACKWARD";
     case FREE_TO_ADV_BACKWARD: return "FREE_TO_ADV_BACKWARD";
-    case PAWN_SHIELD_BONUS: return "PAWN_SHIELD_BONUS";
-    case DIRECTLY_ON_OPEN_FILE_NEXT_TO_OPEN_PENALTY: return "DIRECTLY_ON_OPEN_FILE_NEXT_TO_OPEN_PENALTY";
-    case DIRECTLY_ON_OPEN_FILE_NOT_NEXT_TO_OPEN_PENALTY: return "DIRECTLY_ON_OPEN_FILE_NOT_NEXT_TO_OPEN_PENALTY";
-    case NEXT_TO_OPEN_FILE_PENALTY: return "NEXT_TO_OPEN_FILE_PENALTY";
-    case DIRECTLY_ON_SEMI_OPEN_FILE_NEXT_TO_OPEN_PENALTY: return "DIRECTLY_ON_SEMI_OPEN_FILE_NEXT_TO_OPEN_PENALTY";
-    case DIRECTLY_ON_SEMI_OPEN_FILE_NOT_NEXT_TO_OPEN_PENALTY: return "DIRECTLY_ON_SEMI_OPEN_FILE_NOT_NEXT_TO_OPEN_PENALTY";
-    case NEXT_TO_SEMI_OPEN_FILE_PENALTY: return "NEXT_TO_SEMI_OPEN_FILE_PENALTY";
+    case KING_FILE_OPEN_WITH_RQ: return "KING_FILE_OPEN_WITH_RQ";
+    case KING_FILE_OPEN_WITHOUT_RQ: return "KING_FILE_OPEN_WITHOUT_RQ";
+    case ADJ_FILE_OPEN_WITH_RQ: return "ADJ_FILE_OPEN_WITH_RQ";
+    case ADJ_FILE_OPEN_WITHOUT_RQ: return "ADJ_FILE_OPEN_WITHOUT_RQ";
+    case NO_DEF_PAWNS_ON_KING_FILE_WITH_RQ: return "NO_DEF_PAWNS_ON_KING_FILE_WITH_RQ";
+    case NO_DEF_PAWNS_ON_KING_FILE_WITHOUT_RQ: return "NO_DEF_PAWNS_ON_KING_FILE_WITHOUT_RQ";
+    case NO_ATT_PAWNS_ON_KING_FILE_WITH_RQ: return "NO_ATT_PAWNS_ON_KING_FILE_WITH_RQ";
+    case NO_ATT_PAWNS_ON_KING_FILE_WITHOUT_RQ: return "NO_ATT_PAWNS_ON_KING_FILE_WITHOUT_RQ";
+    case FILES_AROUND_KING_WITHOUT_DEF_PAWNS_WITH_RQ: return "FILES_AROUND_KING_WITHOUT_DEF_PAWNS_WITH_RQ";
+    case FILES_AROUND_KING_WITHOUT_DEF_PAWNS_WITHOUT_RQ: return "FILES_AROUND_KING_WITHOUT_DEF_PAWNS_WITHOUT_RQ";
+    case FILES_AROUND_KING_WITHOUT_ATT_PAWNS_WITH_RQ: return "FILES_AROUND_KING_WITHOUT_ATT_PAWNS_WITH_RQ";
+    case FILES_AROUND_KING_WITHOUT_ATT_PAWNS_WITHOUT_RQ: return "FILES_AROUND_KING_WITHOUT_ATT_PAWNS_WITHOUT_RQ";
+    case RIGHT_DEF_QUEEN_SIDE_SQUARE_WITH_QB: return "RIGHT_DEF_QUEEN_SIDE_SQUARE_WITH_QB";
+    case RIGHT_DEF_QUEEN_SIDE_SQUARE_WITHOUT_QB: return "RIGHT_DEF_QUEEN_SIDE_SQUARE_WITHOUT_QB";
+    case LEFT_DEF_QUEEN_SIDE_SQUARE_WITH_QB: return "LEFT_DEF_QUEEN_SIDE_SQUARE_WITH_QB";
+    case LEFT_DEF_QUEEN_SIDE_SQUARE_WITHOUT_QB: return "LEFT_DEF_QUEEN_SIDE_SQUARE_WITHOUT_QB";
+    case RIGHT_DEF_KING_SIDE_SQUARE_WITH_QB: return "RIGHT_DEF_KING_SIDE_SQUARE_WITH_QB";
+    case RIGHT_DEF_KING_SIDE_SQUARE_WITHOUT_QB: return "RIGHT_DEF_KING_SIDE_SQUARE_WITHOUT_QB";
+    case LEFT_DEF_KING_SIDE_SQUARE_WITH_QB: return "LEFT_DEF_KING_SIDE_SQUARE_WITH_QB";
+    case LEFT_DEF_KING_SIDE_SQUARE_WITHOUT_QB: return "LEFT_DEF_KING_SIDE_SQUARE_WITHOUT_QB";
+    case RIGHT_DEF_CENTRAL_SQUARE_WITH_QB: return "RIGHT_DEF_CENTRAL_SQUARE_WITH_QB";
+    case RIGHT_DEF_CENTRAL_SQUARE_WITHOUT_QB: return "RIGHT_DEF_CENTRAL_SQUARE_WITHOUT_QB";
+    case LEFT_DEF_CENTRAL_SQUARE_WITH_QB: return "LEFT_DEF_CENTRAL_SQUARE_WITH_QB";
+    case LEFT_DEF_CENTRAL_SQUARE_WITHOUT_QB: return "LEFT_DEF_CENTRAL_SQUARE_WITHOUT_QB";
+    case QUEEN_SIDE_FORWARD_SQUARE: return "QUEEN_SIDE_FORWARD_SQUARE";
+    case CENTRAL_FORWARD_SQUARE: return "CENTRAL_FORWARD_SQUARE";
+    case KING_SIDE_FORWARD_SQUARE: return "KING_SIDE_FORWARD_SQUARE";
+    case WEAK_PAWNS_AROUND_SMALL_KING: return "WEAK_PAWNS_AROUND_SMALL_KING";
+    case WEAK_PAWNS_AROUND_BIG_KING: return "WEAK_PAWNS_AROUND_BIG_KING";
+    case OP_PAWNS_IN_SMALL_MASK: return "OP_PAWNS_IN_SMALL_MASK";
+    case OP_PAWNS_IN_BIG_MASK: return "OP_PAWNS_IN_BIG_MASK";
+    case MOBILITY_PENALTY: return "MOBILITY_PENALTY";
     case ROOK_ON_OPEN_FILE: return "ROOK_ON_OPEN_FILE";
     case ROOK_ON_SEMI_OPEN_FILE: return "ROOK_ON_SEMI_OPEN_FILE";
     case CONNECTED_ROOKS: return "CONNECTED_ROOKS";
@@ -280,21 +305,36 @@ static string get_parameter_name(int index)
     case KNIGHT_OUTPOST_WITH_OPPOSITE_BISHOP: return "KNIGHT_OUTPOST_WITH_OPPOSITE_BISHOP";
     }
 
-    if (index >= PAWN_PST_START && index <= PAWN_PST_END) return "PAWN_PST_START+" + to_string(index - PAWN_PST_START);
-    if (index >= KNIGHT_PST_START && index <= KNIGHT_PST_END) return "KNIGHT_PST_START+" + to_string(index - KNIGHT_PST_START);
-    if (index >= BISHOP_PST_START && index <= BISHOP_PST_END) return "BISHOP_PST_START+" + to_string(index - BISHOP_PST_START);
-    if (index >= ROOK_PST_START && index <= ROOK_PST_END) return "ROOK_PST_START+" + to_string(index - ROOK_PST_START);
-    if (index >= QUEEN_PST_START && index <= QUEEN_PST_END) return "QUEEN_PST_START+" + to_string(index - QUEEN_PST_START);
-    if (index >= KING_PST_START && index <= KING_PST_END) return "KING_PST_START+" + to_string(index - KING_PST_START);
-    if (index >= PASSED_PAWNS_START && index <= PASSED_PAWNS_END) return "PASSED_PAWNS_START+" + to_string(index - PASSED_PAWNS_START);
-    if (index >= ISOLANI_START && index <= ISOLANI_END) return "ISOLANI_START+" + to_string(index - ISOLANI_START);
-    if (index >= BLOCKED_ISOLANI_START && index <= BLOCKED_ISOLANI_END) return "BLOCKED_ISOLANI_START+" + to_string(index - BLOCKED_ISOLANI_START);
-    if (index >= DOUBLE_PAWN_FILE_START && index <= DOUBLE_PAWN_FILE_END) return "DOUBLE_PAWN_FILE_START+" + to_string(index - DOUBLE_PAWN_FILE_START);
-    if (index >= NEXT_TO_OPEN_DIAGONAL_PENALTY_START && index <= NEXT_TO_OPEN_DIAGONAL_PENALTY_END) return "NEXT_TO_OPEN_DIAGONAL_PENALTY_START+" + to_string(index - NEXT_TO_OPEN_DIAGONAL_PENALTY_START);
-    if (index >= MOBILITY_START && index <= MOBILITY_END) return "MOBILITY_START+" + to_string(index - MOBILITY_START);
-    if (index >= ROOK_BEHIND_FREE_PAWN_START && index <= ROOK_BEHIND_FREE_PAWN_END) return "ROOK_BEHIND_FREE_PAWN_START+" + to_string(index - ROOK_BEHIND_FREE_PAWN_START);
+    if (index >= PAWN_PST_START && index <= PAWN_PST_END) return "PAWN_PST_START+" + std::to_string(index - PAWN_PST_START);
+    if (index >= KNIGHT_PST_START && index <= KNIGHT_PST_END) return "KNIGHT_PST_START+" + std::to_string(index - KNIGHT_PST_START);
+    if (index >= BISHOP_PST_START && index <= BISHOP_PST_END) return "BISHOP_PST_START+" + std::to_string(index - BISHOP_PST_START);
+    if (index >= ROOK_PST_START && index <= ROOK_PST_END) return "ROOK_PST_START+" + std::to_string(index - ROOK_PST_START);
+    if (index >= QUEEN_PST_START && index <= QUEEN_PST_END) return "QUEEN_PST_START+" + std::to_string(index - QUEEN_PST_START);
+    if (index >= KING_PST_START && index <= KING_PST_END) return "KING_PST_START+" + std::to_string(index - KING_PST_START);
+    if (index >= PASSED_PAWNS_START && index <= PASSED_PAWNS_END) return "PASSED_PAWNS_START+" + std::to_string(index - PASSED_PAWNS_START);
+    if (index >= PROTECTED_PASSED_PAWNS_START && index <= PROTECTED_PASSED_PAWNS_END) return "PROTECTED_PASSED_PAWNS_START+" + std::to_string(index - PROTECTED_PASSED_PAWNS_START);
+    if (index >= BLOCKED_FREE_PAWN_START && index <= BLOCKED_FREE_PAWN_END) return "BLOCKED_FREE_PAWN_START+" + std::to_string(index - BLOCKED_FREE_PAWN_START);
+    if (index >= CANT_REACHED_BY_ENEMY_KING_START && index <= CANT_REACHED_BY_ENEMY_KING_END) return "CANT_REACHED_BY_ENEMY_KING_START+" + std::to_string(index - CANT_REACHED_BY_ENEMY_KING_START);
+    if (index >= OWN_KING_IS_CLOSE_START && index <= OWN_KING_IS_CLOSE_END) return "OWN_KING_IS_CLOSE_START+" + std::to_string(index - OWN_KING_IS_CLOSE_START);
+    if (index >= OWN_KING_IS_FAR_START && index <= OWN_KING_IS_FAR_END) return "OWN_KING_IS_FAR_START+" + std::to_string(index - OWN_KING_IS_FAR_START);
+    if (index >= ROOK_BEHIND_FREE_PAWN_START && index <= ROOK_BEHIND_FREE_PAWN_END) return "ROOK_BEHIND_FREE_PAWN_START+" + std::to_string(index - ROOK_BEHIND_FREE_PAWN_START);
+    if (index >= OP_ROOK_BEHIND_FREE_PAWN_START && index <= OP_ROOK_BEHIND_FREE_PAWN_END) return "OP_ROOK_BEHIND_FREE_PAWN_START+" + std::to_string(index - OP_ROOK_BEHIND_FREE_PAWN_START);
+    if (index >= ISOLANI_START && index <= ISOLANI_END) return "ISOLANI_START+" + std::to_string(index - ISOLANI_START);
+    if (index >= BLOCKED_ISOLANI_START && index <= BLOCKED_ISOLANI_END) return "BLOCKED_ISOLANI_START+" + std::to_string(index - BLOCKED_ISOLANI_START);
+    if (index >= PROTECTED_ISOLANI_START && index <= PROTECTED_ISOLANI_END) return "PROTECTED_ISOLANI_START+" + std::to_string(index - PROTECTED_ISOLANI_START);
+    if (index >= DOUBLE_PAWN_FILE_START && index <= DOUBLE_PAWN_FILE_END) return "DOUBLE_PAWN_FILE_START+" + std::to_string(index - DOUBLE_PAWN_FILE_START);
+    if (index > PAWNS_DEFEND_DIAGONAL_START && index <= PAWNS_DEFEND_DIAGONAL_END) return "PAWNS_DEFEND_DIAGONAL_START+" + std::to_string(index - PAWNS_DEFEND_DIAGONAL_START);
+    if (index >= OTHER_DEF_COUNT_NO_PAWNS_START && index <= OTHER_DEF_COUNT_NO_PAWNS_END) return "OTHER_DEF_COUNT_NO_PAWNS_START+" + std::to_string(index - OTHER_DEF_COUNT_NO_PAWNS_START);
+    if (index >= OTHER_DEF_COUNT_WITH_PAWNS_START && index <= OTHER_DEF_COUNT_WITH_PAWNS_END) return "OTHER_DEF_COUNT_WITH_PAWNS_START+" + std::to_string(index - OTHER_DEF_COUNT_WITH_PAWNS_START);
+    if (index >= SMALL_ATTACK_COUNT_START && index <= SMALL_ATTACK_COUNT_END) return "SMALL_ATTACK_COUNT_START+" + std::to_string(index - SMALL_ATTACK_COUNT_START);
+    if (index >= BIG_ATTACK_COUNT_START && index <= BIG_ATTACK_COUNT_END) return "BIG_ATTACK_COUNT_START+" + std::to_string(index - BIG_ATTACK_COUNT_START);
+    if (index >= PIECE_ATTACKING_START && index <= PIECE_ATTACKING_END) return "PIECE_ATTACKING_START+" + std::to_string(index - PIECE_ATTACKING_START);
+    if (index >= DISTINCT_PIECES_ATTACKING_START && index <= DISTINCT_PIECES_ATTACKING_END) return "DISTINCT_PIECES_ATTACKING_START+" + std::to_string(index - DISTINCT_PIECES_ATTACKING_START);
+    if (index >= KING_ESCAPE_SQUARES_START && index <= KING_ESCAPE_SQUARES_END) return "KING_ESCAPE_SQUARES_START+" + std::to_string(index - KING_ESCAPE_SQUARES_START);
+    if (index >= KING_TROPISM_START && index <= KING_TROPISM_END) return "KING_TROPISM_START+" + std::to_string(index - KING_TROPISM_START);
+    if (index >= MOBILITY_START && index <= MOBILITY_END) return "MOBILITY_START+" + std::to_string(index - MOBILITY_START);
 
-    return "PARAM_" + to_string(index);
+    return "PARAM_" + std::to_string(index);
 }
 
 static void print_parameter_non_zero_coverage(const parameters_t& parameters, const vector<Entry>& entries)
@@ -356,8 +396,16 @@ static void parse_fen(const bool side_to_move_wdl, const parameters_t& parameter
         cout << original_fen;
     }
 
-    // Direkt FEN verwenden (keine Quiescence nötig bei ruhigen Positionen)
+    // Direkt FEN verwenden (keine Quiescence nï¿½tig bei ruhigen Positionen)
     EvalResult eval_result = TuneEval::get_fen_eval_result(original_fen);
+
+    /*const int tropism_index = KING_TROPISM_START - PARAM_START;
+    if (tropism_index >= 0 &&
+        tropism_index < static_cast<int>(eval_result.coefficients.size()) &&
+        eval_result.coefficients[tropism_index] != 0)
+    {
+        cout << "KING_TROPISM_START != 0: " << original_fen << '\n';
+    }*/
 
     Entry entry;
     entry.white_to_move = get_fen_color_to_move(original_fen);

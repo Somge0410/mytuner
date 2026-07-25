@@ -136,7 +136,7 @@ void eval_iso_passed(EvaluationResult& score, EvalContext& ctx, Trace* trace) {
 				if (block_count == 0) {
 					int promo_square = get_promotion_square(pawn_square, static_cast<Color>(color));
 					int enemy_king_distance_to_promo_sq = king_distance(ctx.board.get_king_square(static_cast<Color>(ecolor)), promo_square);
-					int pawn_distance_to_promo_sq = 7 - rank_index;
+					int pawn_distance_to_promo_sq = color == 0 ? 7 - rank_index : rank_index;
 					if (ctx.board.get_turn() == static_cast<Color>(ecolor)) enemy_king_distance_to_promo_sq--;
 					if (enemy_king_distance_to_promo_sq > pawn_distance_to_promo_sq) {
 						addTerm<isTracing>(score, static_cast<EvalParam>(EvalParam::CANT_REACHED_BY_ENEMY_KING_START + bucket), color == 0 ? 1 : -1, trace);
@@ -183,7 +183,7 @@ void eval_iso_passed(EvaluationResult& score, EvalContext& ctx, Trace* trace) {
 					addTerm<isTracing>(score, static_cast<EvalParam>(EvalParam::ISOLANI_START + bucket), color == 0 ? 1 : -1, trace);
 				uint64_t defends = ctx.board.get_attacks_for_color(static_cast<Color>(color)) & bit64(pawn_square);
 				if (defends != 0) {
-					//addTerm<isTracing>(score, static_cast<EvalParam>(EvalParam::PROTECTED_PASSED_PAWNS_START + bucket), color == 0 ? 1 : -1, trace);
+					addTerm<isTracing>(score, static_cast<EvalParam>(EvalParam::PROTECTED_PASSED_PAWNS_START + bucket), color == 0 ? 1 : -1, trace);
 				}
 
 			}
@@ -261,92 +261,369 @@ void eval_double_pawns(EvaluationResult& score, EvalContext& ctx, Trace* trace) 
 }
 template<bool isTracing>
 void eval_king_safety(EvaluationResult& score, const EvalContext& ctx, Trace* trace) {
-	{
-		int king_squares[2] = { ctx.board.get_king_square(Color::WHITE), ctx.board.get_king_square(Color::BLACK) };
-		int pawn_shield_count = 0;
-		int directly_on_open_not_next_to_open_count = 0;
-		int directly_on_open_next_to_open_count = 0;
-		int next_to_open_count = 0;
-		int directly_on_semi_open_count_not_next_to_open = 0;
-		int directly_on_semi_open_count_next_to_open = 0;
-		int next_to_semi_open_count = 0;
-		int next_to_open_diagonal_count[7] = { 0,0,0,0,0,0,0 };
-		for (size_t color = 0; color < 2; color++) {
-			int ecolor = color == 0 ? 1 : 0;
-			uint64_t king_square_colors = ((bit64(king_squares[color]) & LIGHT_SQUARES) != 0) ? LIGHT_SQUARES : DARK_SQUARES;
-			uint64_t shield_mask = KING_SHIELD[color][king_squares[color]];
-			int king_file_index = king_squares[color] % 8;
-
-			//1. Pawn Shield Bonus
-			if (!is_on_center_files(king_squares[color])) {
-				int shield_pawns_count = popcount(ctx.get_pieces(color, PieceType::PAWN) & shield_mask);
-				pawn_shield_count += color == 0 ? shield_pawns_count : -shield_pawns_count;
+	int king_squares[2] = { ctx.board.get_king_square(Color::WHITE), ctx.board.get_king_square(Color::BLACK) };
+	int king_file_open_with_rq = 0;
+	int king_file_open_without_rq = 0;
+	int adj_file_open_with_rq = 0;
+	int adj_file_open_without_rq = 0;
+	int no_def_pawns_on_king_file_with_rq = 0;
+	int no_def_pawns_on_king_file_without_rq = 0;
+	int no_att_pawns_on_king_file_with_rq = 0;
+	int no_att_pawns_on_king_file_without_rq = 0;
+	int files_around_king_without_def_pawns_without_rq = 0;
+	int files_around_king_without_def_pawns_with_rq = 0;
+	int files_around_king_without_att_pawns_with_rq = 0;
+	int files_around_king_without_att_pawns_without_rq = 0;
+	int pawns_defend_diagonal[3] = { 0,0,0 };
+	int other_def_count_no_pawns[3] = { 0,0,0 };
+	int other_def_count_with_pawns[3] = { 0,0,0 };
+	int right_def_queen_side_square_with_qb = 0;
+	int right_def_queen_side_square_without_qb = 0;
+	int left_def_queen_side_square_with_qb = 0;
+	int left_def_queen_side_square_without_qb = 0;
+	int left_def_central_square_with_qb = 0;
+	int left_def_central_square_without_qb = 0;
+	int right_def_central_square_with_qb = 0;
+	int right_def_central_square_without_qb = 0;
+	int center_forward_square = 0;
+	int left_def_king_side_square_with_qb = 0;
+	int left_def_king_side_square_without_qb = 0;
+	int right_def_king_side_square_with_qb = 0;
+	int right_def_king_side_square_without_qb = 0;
+	int queen_side_forward_square = 0;
+	int king_side_forward_square = 0;
+	int small_attack_count[8] = { 0 };
+	int big_attack_count[13] = { 0 };
+	int piece_attacking[6] = { 0 };
+	int distinct_pieces_attacking[5] = { 0 };
+	int weak_pawns_around_small_king = 0;
+	int weak_pawns_around_big_king = 0;
+	int op_pawns_in_small_mask = 0;
+	int op_pawns_in_big_mask = 0;
+	int king_escape_squares[3] = { 0 };
+	int king_tropism[7] = { 0 };
+	int mobility_penalty = 0;
+	for (size_t color = 0; color < 2; color++) {
+		int king_file = file(king_squares[color]);
+		int op_color = flip_color(color);
+		bool has_rq = (ctx.get_pieces(static_cast<Color>(op_color), PieceType::ROOK) | ctx.get_pieces(static_cast<Color>(op_color), PieceType::QUEEN)) != 0;
+		if (ctx.is_file_open(king_file)) {
+			if (has_rq)
+				king_file_open_with_rq += color == 0 ? 1 : -1;
+			else
+				king_file_open_without_rq += color == 0 ? 1 : -1;
+		}
+		else {
+			if (!ctx.does_color_have_pawns_on_file(king_file, static_cast<Color>(color))) {
+				if (has_rq)
+					no_def_pawns_on_king_file_with_rq += color == 0 ? 1 : -1;
+				else
+					no_def_pawns_on_king_file_without_rq += color == 0 ? 1 : -1;
 			}
-			// 2 Next to Open File Penalty
-			bool is_any_next_open = false;
-			if (ctx.is_file_open(king_file_index + 1)) {
-				next_to_open_count += color == 0 ? 1 : -1;
-				is_any_next_open = true;
-			}
-			if (ctx.is_file_open(king_file_index - 1)) {
-				next_to_open_count += color == 0 ? 1 : -1;
-				is_any_next_open = true;
-			}
-			// 2.5 Open File Penalty
-			bool is_king_file_open = ctx.is_file_open(king_file_index);
-			if (is_king_file_open) {
-				if (is_any_next_open) {
-					directly_on_open_next_to_open_count += color == 0 ? 1 : -1;
-				}
-				else {
-					directly_on_open_not_next_to_open_count += color == 0 ? 1 : -1;
-				}
-			}
-			// 3. Semi Open File Penalty
-			bool on_semi_open = ctx.does_color_have_pawns_on_file(king_file_index, static_cast<Color>(ecolor));
-			if (on_semi_open) {
-				if (!is_any_next_open) {
-					directly_on_semi_open_count_not_next_to_open += color == 0 ? 1 : -1;
-				}
-				else {
-					directly_on_semi_open_count_next_to_open += color == 0 ? 1 : -1;
-				}
-			}
-			//3.5 Semi Open File Penalty for files next to the king
-			if (ctx.does_color_have_pawns_on_file(king_file_index + 1, static_cast<Color>(ecolor))) {
-				next_to_semi_open_count += color == 0 ? 1 : -1;
-			}
-			if (ctx.does_color_have_pawns_on_file(king_file_index - 1, static_cast<Color>(ecolor))) {
-				next_to_semi_open_count += color == 0 ? 1 : -1;
-			}
-
-			//5. Open Diagonal Penalty
-			uint64_t bishop_attack_mask = get_bishop_attacks(king_squares[color], ctx.get_color_pieces(ecolor));
-			uint64_t op_bishop_queen_on_mask = bishop_attack_mask & (ctx.get_pieces(ecolor, PieceType::BISHOP) | ctx.get_pieces(ecolor, PieceType::QUEEN));
-			while (op_bishop_queen_on_mask) {
-				int sq = get_lsb(op_bishop_queen_on_mask);
-				uint64_t line_between = LINE_BETWEEN[sq][king_squares[color]];
-				int count = popcount(line_between & ctx.get_pieces(color, PieceType::PAWN));
-				if (count > 6) count = 6;
-				next_to_open_diagonal_count[count] += color == 0 ? 1 : -1;
-
-				op_bishop_queen_on_mask &= op_bishop_queen_on_mask - 1;
+			if (!ctx.does_color_have_pawns_on_file(king_file, static_cast<Color>(op_color))) {
+				if (has_rq)
+					no_att_pawns_on_king_file_with_rq += color == 0 ? 1 : -1;
+				else
+					no_att_pawns_on_king_file_without_rq += color == 0 ? 1 : -1;
 			}
 		}
-		//TODO: Scale safety score with enemy material.
-		addTerm<isTracing>(score, EvalParam::PAWN_SHIELD_BONUS, pawn_shield_count, trace);
-		addTerm<isTracing>(score, EvalParam::DIRECTLY_ON_OPEN_FILE_NOT_NEXT_TO_OPEN_PENALTY, directly_on_open_not_next_to_open_count, trace);
-		addTerm<isTracing>(score, EvalParam::DIRECTLY_ON_OPEN_FILE_NEXT_TO_OPEN_PENALTY, directly_on_open_next_to_open_count, trace);
-		addTerm<isTracing>(score, EvalParam::NEXT_TO_OPEN_FILE_PENALTY, next_to_open_count, trace);
-		addTerm<isTracing>(score, EvalParam::DIRECTLY_ON_SEMI_OPEN_FILE_NEXT_TO_OPEN_PENALTY, directly_on_semi_open_count_next_to_open, trace);
-		addTerm<isTracing>(score, EvalParam::DIRECTLY_ON_SEMI_OPEN_FILE_NOT_NEXT_TO_OPEN_PENALTY, directly_on_semi_open_count_not_next_to_open, trace);
-		addTerm<isTracing>(score, EvalParam::NEXT_TO_SEMI_OPEN_FILE_PENALTY, next_to_semi_open_count, trace);
-		for (size_t count = 0; count < 7; count++) {
-			addTerm<isTracing>(score, static_cast<EvalParam>(EvalParam::NEXT_TO_OPEN_DIAGONAL_PENALTY_START + count), next_to_open_diagonal_count[count], trace);
+		for (int k : {1, -1}) {
+			int adj_file = king_file + k;
+			if (adj_file >= 0 && adj_file < 8) {
+
+				if (ctx.is_file_open(adj_file)) {
+					if (has_rq)
+						adj_file_open_with_rq += color == 0 ? 1 : -1;
+					else
+						adj_file_open_without_rq += color == 0 ? 1 : -1;
+				}
+				else {
+					if (!ctx.does_color_have_pawns_on_file(adj_file, static_cast<Color>(color))) {
+						if (has_rq)
+							files_around_king_without_def_pawns_with_rq += color == 0 ? 1 : -1;
+						else
+							files_around_king_without_def_pawns_without_rq += color == 0 ? 1 : -1;
+					}
+					if (!ctx.does_color_have_pawns_on_file(adj_file, static_cast<Color>(op_color))) {
+						if (has_rq)
+							files_around_king_without_att_pawns_with_rq += color == 0 ? 1 : -1;
+						else
+							files_around_king_without_att_pawns_without_rq += color == 0 ? 1 : -1;
+					}
+				}
+			}
+		}
+		// Open Diagonal Penalty
+		uint64_t bishop_attack_mask = get_bishop_attacks(king_squares[color], ctx.get_color_pieces(op_color));
+		uint64_t op_bishop_queen_on_mask = bishop_attack_mask & (ctx.get_pieces(op_color, PieceType::BISHOP) | ctx.get_pieces(op_color, PieceType::QUEEN));
+		while (op_bishop_queen_on_mask) {
+			int sq = get_lsb(op_bishop_queen_on_mask);
+			uint64_t line_between = LINE_BETWEEN[sq][king_squares[color]];
+			int count = popcount(line_between & ctx.get_pieces(color, PieceType::PAWN));
+			if (count > 2) count = 2;
+			pawns_defend_diagonal[count] += color == 0 ? 1 : -1;
+			int other_def_count = popcount(line_between & ctx.get_color_pieces(color) & ~ctx.get_pieces(color, PieceType::PAWN));
+			if (other_def_count > 2) other_def_count = 2;
+			if (count == 0)
+				other_def_count_no_pawns[other_def_count] += color == 0 ? 1 : -1;
+			else
+				other_def_count_with_pawns[other_def_count] += color == 0 ? 1 : -1;
+			op_bishop_queen_on_mask &= op_bishop_queen_on_mask - 1;
+		}
+		//PAWN_SHIELD
+		if (king_file == 0) {
+			int forwad_square = get_forward_square(king_squares[color], static_cast<Color>(color));
+			if (forwad_square >= 0 && forwad_square < 64) {
+				int center_square = forwad_square + 1;
+				bool is_light_square = (bit64(center_square) & LIGHT_SQUARES) != 0;
+				uint64_t ld_squares = is_light_square ? LIGHT_SQUARES : DARK_SQUARES;
+				uint64_t bishops = ctx.board.get_pieces(static_cast<Color>(op_color), PieceType::BISHOP) & ld_squares;
+				bool does_have_attackers = (bishops != 0) || (ctx.board.get_pieces(static_cast<Color>(op_color), PieceType::QUEEN)) != 0;
+				if (does_have_attackers) {
+					if (bit64(center_square) & ctx.board.get_pieces(static_cast<Color>(color), PieceType::PAWN)) {
+						right_def_queen_side_square_with_qb += color == 0 ? 1 : -1;
+					}
+				}
+				else {
+					if (bit64(center_square) & ctx.board.get_pieces(static_cast<Color>(color), PieceType::PAWN)) {
+						right_def_queen_side_square_without_qb += color == 0 ? 1 : -1;
+					}
+				}
+				if (bit64(forwad_square) & ctx.board.get_pieces(static_cast<Color>(color), PieceType::PAWN)) {
+					queen_side_forward_square += color == 0 ? 1 : -1;
+				}
+			}
 
 		}
+		else if (king_file <= 2) {
+			int forward_square = get_forward_square(king_squares[color], static_cast<Color>(color));
+			if (forward_square >= 0 && forward_square < 64) {
+				int center_square = forward_square + 1;
+				int border_square = forward_square - 1;
+				bool is_light_square = (bit64(center_square) & LIGHT_SQUARES) != 0;
+				uint64_t ld_squares = is_light_square ? LIGHT_SQUARES : DARK_SQUARES;
+				uint64_t bishops = ctx.board.get_pieces(static_cast<Color>(op_color), PieceType::BISHOP) & ld_squares;
+				bool does_have_attackers = (bishops != 0) || (ctx.board.get_pieces(static_cast<Color>(op_color), PieceType::QUEEN)) != 0;
+				if (does_have_attackers) {
+					if (bit64(center_square) & ctx.board.get_pieces(static_cast<Color>(color), PieceType::PAWN)) {
+						right_def_queen_side_square_with_qb += color == 0 ? 1 : -1;
+					}
+					if (bit64(border_square) & ctx.board.get_pieces(static_cast<Color>(color), PieceType::PAWN)) {
+						left_def_queen_side_square_with_qb += color == 0 ? 1 : -1;
+					}
+				}
+				else {
+					if (bit64(center_square) & ctx.board.get_pieces(static_cast<Color>(color), PieceType::PAWN)) {
+						right_def_queen_side_square_without_qb += color == 0 ? 1 : -1;
+					}
+					if (bit64(border_square) & ctx.board.get_pieces(static_cast<Color>(color), PieceType::PAWN)) {
+						left_def_queen_side_square_without_qb += color == 0 ? 1 : -1;
+					}
+				}
+				if (bit64(forward_square) & ctx.board.get_pieces(static_cast<Color>(color), PieceType::PAWN)) {
+					queen_side_forward_square += color == 0 ? 1 : -1;
+				}
+			}
+		}
+		else if (king_file <= 4) {
+			int forward_square = get_forward_square(king_squares[color], static_cast<Color>(color));
+			if (forward_square >= 0 && forward_square < 64) {
+				int right_square = forward_square + 1;
+				int left_square = forward_square - 1;
+				bool is_light_square = (bit64(right_square) & LIGHT_SQUARES) != 0;
+				uint64_t ld_squares = is_light_square ? LIGHT_SQUARES : DARK_SQUARES;
+				uint64_t bishops = ctx.board.get_pieces(static_cast<Color>(op_color), PieceType::BISHOP) & ld_squares;
+				bool does_have_attackers = (bishops != 0) || (ctx.board.get_pieces(static_cast<Color>(op_color), PieceType::QUEEN)) != 0;
+				if (does_have_attackers) {
+					if (bit64(right_square) & ctx.board.get_pieces(static_cast<Color>(color), PieceType::PAWN)) {
+						right_def_central_square_with_qb += color == 0 ? 1 : -1;
+					}
+					if (bit64(left_square) & ctx.board.get_pieces(static_cast<Color>(color), PieceType::PAWN)) {
+						left_def_central_square_with_qb += color == 0 ? 1 : -1;
+					}
+				}
+				else {
+					if (bit64(right_square) & ctx.board.get_pieces(static_cast<Color>(color), PieceType::PAWN)) {
+						right_def_central_square_without_qb += color == 0 ? 1 : -1;
+					}
+					if (bit64(left_square) & ctx.board.get_pieces(static_cast<Color>(color), PieceType::PAWN)) {
+						left_def_central_square_without_qb += color == 0 ? 1 : -1;
+					}
+				}
+				if (bit64(forward_square) & ctx.board.get_pieces(static_cast<Color>(color), PieceType::PAWN)) {
+					center_forward_square += color == 0 ? 1 : -1;
+				}
+			}
+		}
+		else if (king_file <= 6) {
+			int forward_square = get_forward_square(king_squares[color], static_cast<Color>(color));
+			if (forward_square >= 0 && forward_square < 64) {
+				int right_square = forward_square + 1;
+				int left_square = forward_square - 1;
+				bool is_light_square = (bit64(right_square) & LIGHT_SQUARES) != 0;
+				uint64_t ld_squares = is_light_square ? LIGHT_SQUARES : DARK_SQUARES;
+				uint64_t bishops = ctx.board.get_pieces(static_cast<Color>(op_color), PieceType::BISHOP) & ld_squares;
+				bool does_have_attackers = (bishops != 0) || (ctx.board.get_pieces(static_cast<Color>(op_color), PieceType::QUEEN)) != 0;
+				if (does_have_attackers) {
+					if (bit64(right_square) & ctx.board.get_pieces(static_cast<Color>(color), PieceType::PAWN)) {
+						right_def_king_side_square_with_qb += color == 0 ? 1 : -1;
+					}
+					if (bit64(left_square) & ctx.board.get_pieces(static_cast<Color>(color), PieceType::PAWN)) {
+						left_def_king_side_square_with_qb += color == 0 ? 1 : -1;
+					}
+				}
+				else {
+					if (bit64(right_square) & ctx.board.get_pieces(static_cast<Color>(color), PieceType::PAWN)) {
+						right_def_king_side_square_without_qb += color == 0 ? 1 : -1;
+					}
+					if (bit64(left_square) & ctx.board.get_pieces(static_cast<Color>(color), PieceType::PAWN)) {
+						left_def_king_side_square_without_qb += color == 0 ? 1 : -1;
+					}
+				}
+				if (bit64(forward_square) & ctx.board.get_pieces(static_cast<Color>(color), PieceType::PAWN)) {
+					king_side_forward_square += color == 0 ? 1 : -1;
+				}
+			}
+		}
+		else if (king_file == 7) {
+			int forward_square = get_forward_square(king_squares[color], static_cast<Color>(color));
+			if (forward_square >= 0 && forward_square < 64) {
+				int left_square = forward_square - 1;
+				bool is_light_square = (bit64(left_square) & LIGHT_SQUARES) != 0;
+				uint64_t ld_squares = is_light_square ? LIGHT_SQUARES : DARK_SQUARES;
+				uint64_t bishops = ctx.board.get_pieces(static_cast<Color>(op_color), PieceType::BISHOP) & ld_squares;
+				bool does_have_attackers = (bishops != 0) || (ctx.board.get_pieces(static_cast<Color>(op_color), PieceType::QUEEN)) != 0;
+				if (does_have_attackers) {
+					if (bit64(left_square) & ctx.board.get_pieces(static_cast<Color>(color), PieceType::PAWN)) {
+						left_def_king_side_square_with_qb += color == 0 ? 1 : -1;
+					}
+				}
+				else {
+					if (bit64(left_square) & ctx.board.get_pieces(static_cast<Color>(color), PieceType::PAWN)) {
+						left_def_king_side_square_without_qb += color == 0 ? 1 : -1;
+					}
+				}
+				if (bit64(forward_square) & ctx.board.get_pieces(static_cast<Color>(color), PieceType::PAWN)) {
+					king_side_forward_square += color == 0 ? 1 : -1;
+				}
+			}
+		}
+		//Attacks around king
+		uint64_t op_piece_attacks[6] = { 0 };
+		op_piece_attacks[to_int(PieceType::QUEEN)] = ctx.board.get_queen_attacks_for_color(static_cast<Color>(op_color));
+		op_piece_attacks[to_int(PieceType::ROOK)] = ctx.board.get_rook_attacks_for_color(static_cast<Color>(op_color));
+		op_piece_attacks[to_int(PieceType::BISHOP)] = ctx.board.get_bishop_attacks_for_color(static_cast<Color>(op_color));
+		op_piece_attacks[to_int(PieceType::KNIGHT)] = ctx.board.get_knight_attacks_for_color(static_cast<Color>(op_color));
+		op_piece_attacks[to_int(PieceType::PAWN)] = ctx.board.get_pawn_attacks_for_color(static_cast<Color>(op_color));
+		op_piece_attacks[to_int(PieceType::KING)] = ctx.board.get_king_attacks_for_color(static_cast<Color>(op_color));
+		uint64_t op_all_attacks = op_piece_attacks[to_int(PieceType::QUEEN)] | op_piece_attacks[to_int(PieceType::ROOK)] |
+			op_piece_attacks[to_int(PieceType::BISHOP)] | op_piece_attacks[to_int(PieceType::KNIGHT)] |
+			op_piece_attacks[to_int(PieceType::PAWN)] | op_piece_attacks[to_int(PieceType::KING)];
+		uint64_t small_mask = SMALL_KING_ZONE[king_squares[color]];
+		uint64_t large_mask = KING_ZONE[king_squares[color]] & ~small_mask;
+		int count = popcount(op_all_attacks & small_mask);
+		if (count >= 7) count = 7;
+		small_attack_count[count] += color == 0 ? 1 : -1;
+		count = popcount(op_all_attacks & large_mask);
+		if (count >= 12) count = 12;
+		big_attack_count[count] += color == 0 ? 1 : -1;
+		bool is_piece_attacking[6] = { false };
+		is_piece_attacking[to_int(PieceType::QUEEN)] = (op_piece_attacks[to_int(PieceType::QUEEN)] & small_mask) != 0;
+		is_piece_attacking[to_int(PieceType::ROOK)] = (op_piece_attacks[to_int(PieceType::ROOK)] & small_mask) != 0;
+		is_piece_attacking[to_int(PieceType::BISHOP)] = (op_piece_attacks[to_int(PieceType::BISHOP)] & small_mask) != 0;
+		is_piece_attacking[to_int(PieceType::KNIGHT)] = (op_piece_attacks[to_int(PieceType::KNIGHT)] & small_mask) != 0;
+		is_piece_attacking[to_int(PieceType::PAWN)] = (op_piece_attacks[to_int(PieceType::PAWN)] & small_mask) != 0;
+		is_piece_attacking[to_int(PieceType::KING)] = (op_piece_attacks[to_int(PieceType::KING)] & small_mask) != 0;
+		int different_pieces_attacking = 0;
+		for (PieceType pt : {PieceType::QUEEN, PieceType::ROOK, PieceType::BISHOP, PieceType::KNIGHT, PieceType::PAWN, PieceType::KING}) {
+			if (is_piece_attacking[to_int(pt)]) {
+				piece_attacking[to_int(pt)] += color == 0 ? 1 : -1;
+				different_pieces_attacking++;
+			}
+		}
+		if (different_pieces_attacking >= 4) different_pieces_attacking = 4;
+		distinct_pieces_attacking[different_pieces_attacking] += color == 0 ? 1 : -1;
+		uint64_t small_weak = small_mask & (ctx.backward[color] | ctx.isolated[color]);
+		uint64_t large_weak = large_mask & (ctx.backward[color] | ctx.isolated[color]);
+		weak_pawns_around_small_king += color == 0 ? popcount(small_weak) : -popcount(small_weak);
+		weak_pawns_around_big_king += color == 0 ? popcount(large_weak) : -popcount(large_weak);
+		op_pawns_in_small_mask += color == 0 ? popcount(ctx.get_pieces(op_color, PieceType::PAWN) & small_mask) : -popcount(ctx.get_pieces(op_color, PieceType::PAWN) & small_mask);
+		op_pawns_in_big_mask += color == 0 ? popcount(ctx.get_pieces(op_color, PieceType::PAWN) & large_mask) : -popcount(ctx.get_pieces(op_color, PieceType::PAWN) & large_mask);
+		int king_escape = popcount(small_mask & ~ctx.get_color_pieces(color) & ~op_all_attacks);
+		if (king_escape >= 3) king_escape = 2;
+		king_escape_squares[king_escape] += color == 0 ? 1 : -1;
+		uint64_t queens = ctx.get_pieces(op_color, PieceType::QUEEN);
+		if (queens != 0) {
+			int king_queen_distance = king_distance(king_squares[color], get_lsb(queens)) - 1;
+			king_tropism[king_queen_distance] += color == 0 ? 1 : -1;
+		}
+		int king_mobility = popcount(get_queen_attacks(king_squares[color], ctx.get_all_pieces()));
+		mobility_penalty += color == 0 ? king_mobility : -king_mobility;
 
 	}
+	addTerm<isTracing>(score, EvalParam::KING_FILE_OPEN_WITH_RQ, king_file_open_with_rq, trace);
+	addTerm<isTracing>(score, EvalParam::KING_FILE_OPEN_WITHOUT_RQ, king_file_open_without_rq, trace);
+	addTerm<isTracing>(score, EvalParam::ADJ_FILE_OPEN_WITH_RQ, adj_file_open_with_rq, trace);
+	addTerm<isTracing>(score, EvalParam::ADJ_FILE_OPEN_WITHOUT_RQ, adj_file_open_without_rq, trace);
+	addTerm<isTracing>(score, EvalParam::NO_DEF_PAWNS_ON_KING_FILE_WITH_RQ, no_def_pawns_on_king_file_with_rq, trace);
+	addTerm<isTracing>(score, EvalParam::NO_DEF_PAWNS_ON_KING_FILE_WITHOUT_RQ, no_def_pawns_on_king_file_without_rq, trace);
+	addTerm<isTracing>(score, EvalParam::NO_ATT_PAWNS_ON_KING_FILE_WITH_RQ, no_att_pawns_on_king_file_with_rq, trace);
+	addTerm<isTracing>(score, EvalParam::NO_ATT_PAWNS_ON_KING_FILE_WITHOUT_RQ, no_att_pawns_on_king_file_without_rq, trace);
+	addTerm<isTracing>(score, EvalParam::FILES_AROUND_KING_WITHOUT_DEF_PAWNS_WITH_RQ, files_around_king_without_def_pawns_with_rq, trace);
+	addTerm<isTracing>(score, EvalParam::FILES_AROUND_KING_WITHOUT_DEF_PAWNS_WITHOUT_RQ, files_around_king_without_def_pawns_without_rq, trace);
+	addTerm<isTracing>(score, EvalParam::FILES_AROUND_KING_WITHOUT_ATT_PAWNS_WITH_RQ, files_around_king_without_att_pawns_with_rq, trace);
+	addTerm<isTracing>(score, EvalParam::FILES_AROUND_KING_WITHOUT_ATT_PAWNS_WITHOUT_RQ, files_around_king_without_att_pawns_without_rq, trace);
+	addTerm<isTracing>(score, EvalParam::PAWNS_DEFEND_DIAGONAL_START, pawns_defend_diagonal[0], trace);
+	addTerm<isTracing>(score, static_cast<EvalParam>(EvalParam::PAWNS_DEFEND_DIAGONAL_START + 1), pawns_defend_diagonal[1], trace);
+	addTerm<isTracing>(score, EvalParam::PAWNS_DEFEND_DIAGONAL_END, pawns_defend_diagonal[2], trace);
+	addTerm<isTracing>(score, EvalParam::OTHER_DEF_COUNT_NO_PAWNS_START, other_def_count_no_pawns[0], trace);
+	addTerm<isTracing>(score, static_cast<EvalParam>(EvalParam::OTHER_DEF_COUNT_NO_PAWNS_START + 1), other_def_count_no_pawns[1], trace);
+	addTerm<isTracing>(score, EvalParam::OTHER_DEF_COUNT_NO_PAWNS_END, other_def_count_no_pawns[2], trace);
+	addTerm<isTracing>(score, EvalParam::OTHER_DEF_COUNT_WITH_PAWNS_START, other_def_count_with_pawns[0], trace);
+	addTerm<isTracing>(score, EvalParam::OTHER_DEF_COUNT_WITH_PAWNS_END, other_def_count_with_pawns[1], trace);
+	addTerm<isTracing>(score, EvalParam::RIGHT_DEF_QUEEN_SIDE_SQUARE_WITH_QB, right_def_queen_side_square_with_qb, trace);
+	addTerm<isTracing>(score, EvalParam::RIGHT_DEF_QUEEN_SIDE_SQUARE_WITHOUT_QB, right_def_queen_side_square_without_qb, trace);
+	addTerm<isTracing>(score, EvalParam::LEFT_DEF_QUEEN_SIDE_SQUARE_WITH_QB, left_def_queen_side_square_with_qb, trace);
+	addTerm<isTracing>(score, EvalParam::LEFT_DEF_QUEEN_SIDE_SQUARE_WITHOUT_QB, left_def_queen_side_square_without_qb, trace);
+	addTerm<isTracing>(score, EvalParam::LEFT_DEF_CENTRAL_SQUARE_WITH_QB, left_def_central_square_with_qb, trace);
+	addTerm<isTracing>(score, EvalParam::LEFT_DEF_CENTRAL_SQUARE_WITHOUT_QB, left_def_central_square_without_qb, trace);
+	addTerm<isTracing>(score, EvalParam::RIGHT_DEF_CENTRAL_SQUARE_WITH_QB, right_def_central_square_with_qb, trace);
+	addTerm<isTracing>(score, EvalParam::RIGHT_DEF_CENTRAL_SQUARE_WITHOUT_QB, right_def_central_square_without_qb, trace);
+	addTerm<isTracing>(score, EvalParam::CENTRAL_FORWARD_SQUARE, center_forward_square, trace);
+	addTerm<isTracing>(score, EvalParam::LEFT_DEF_KING_SIDE_SQUARE_WITH_QB, left_def_king_side_square_with_qb, trace);
+	addTerm<isTracing>(score, EvalParam::LEFT_DEF_KING_SIDE_SQUARE_WITHOUT_QB, left_def_king_side_square_without_qb, trace);
+	addTerm<isTracing>(score, EvalParam::RIGHT_DEF_KING_SIDE_SQUARE_WITH_QB, right_def_king_side_square_with_qb, trace);
+	addTerm<isTracing>(score, EvalParam::RIGHT_DEF_KING_SIDE_SQUARE_WITHOUT_QB, right_def_king_side_square_without_qb, trace);
+	addTerm<isTracing>(score, EvalParam::QUEEN_SIDE_FORWARD_SQUARE, queen_side_forward_square, trace);
+	addTerm<isTracing>(score, EvalParam::KING_SIDE_FORWARD_SQUARE, king_side_forward_square, trace);
+	bool in_check = true;
+	if (!in_check) {
+		for (int i = 0; i < 8; i++) {
+			addTerm<isTracing>(score, static_cast<EvalParam>(EvalParam::SMALL_ATTACK_COUNT_START + i), small_attack_count[i], trace);
+		}
+		for (int i = 0; i < 13; i++) {
+			addTerm<isTracing>(score, static_cast<EvalParam>(EvalParam::BIG_ATTACK_COUNT_START + i), big_attack_count[i], trace);
+		}
+		for (int i = 0; i < 6; i++) {
+			addTerm<isTracing>(score, static_cast<EvalParam>(EvalParam::PIECE_ATTACKING_START + i), piece_attacking[i], trace);
+		}
+		for (int i = 0; i < 5; i++) {
+			addTerm<isTracing>(score, static_cast<EvalParam>(EvalParam::DISTINCT_PIECES_ATTACKING_START + i), distinct_pieces_attacking[i], trace);
+		}
+	}
+	addTerm<isTracing>(score, EvalParam::WEAK_PAWNS_AROUND_SMALL_KING, weak_pawns_around_small_king, trace);
+	addTerm<isTracing>(score, EvalParam::WEAK_PAWNS_AROUND_BIG_KING, weak_pawns_around_big_king, trace);
+	addTerm<isTracing>(score, EvalParam::OP_PAWNS_IN_SMALL_MASK, op_pawns_in_small_mask, trace);
+	addTerm<isTracing>(score, EvalParam::OP_PAWNS_IN_BIG_MASK, op_pawns_in_big_mask, trace);
+	for (int i = 0; i < 3; i++) {
+		addTerm<isTracing>(score, static_cast<EvalParam>(EvalParam::KING_ESCAPE_SQUARES_START + i), king_escape_squares[i], trace);
+	}
+	if (!in_check) {
+		for (int i = 0; i < 6; i++) {
+			addTerm<isTracing>(score, static_cast<EvalParam>(EvalParam::KING_TROPISM_START + i), king_tropism[i + 1], trace);
+		}
+	}
+	addTerm<isTracing>(score, EvalParam::MOBILITY_PENALTY, mobility_penalty, trace);
 }
 template<bool isTracing>
 void eval_mobility(EvaluationResult& score, const EvalContext& ctx, Trace* trace) {
