@@ -27,13 +27,21 @@ public:
     // Tuning configuration
     constexpr static bool retune_from_zero = false;  // Start with current values
     constexpr static double preferred_k = 0;  // Auto-determine K
-    constexpr static int32_t max_epoch = 20000;  // Maximum epochs
+    // Optimization and validation. Cross-entropy plus a positive L2 anchor makes
+    // the fixed-feature training objective strongly convex.
+    constexpr static int32_t max_epoch = 500;  // Maximum L-BFGS iterations
+    constexpr static double validation_fraction = 0.10;
+    constexpr static uint32_t validation_seed = 0x5EED1234U;
+    // Keep this weak: rare pawn/king features still need room to move.
+    constexpr static double l2_regularization = 1e-8;
+    constexpr static int32_t lbfgs_history_size = 12;
+    constexpr static int32_t validation_interval = 5;
+    constexpr static int32_t early_stopping_patience = 20;
+    constexpr static double gradient_tolerance = 1e-9;
+    constexpr static double relative_loss_tolerance = 1e-12;
+    constexpr static double validation_min_delta = 1e-8;
     constexpr static bool enable_qsearch = false;  // No quiescence search
     constexpr static bool filter_in_check = false;  // Skip positions in check
-    
-    constexpr static double initial_learning_rate = 10;
-    constexpr static int32_t learning_rate_drop_interval = 100;
-    constexpr static double learning_rate_drop_ratio = 0.8;  // No LR drops
     
     constexpr static int32_t data_load_print_interval = 10000;
 

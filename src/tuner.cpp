@@ -5,13 +5,18 @@
 #include "base.h"
 #include "bitboard_masks.h"
 #include "evaluation.h"
+#include <algorithm>
 #include <array>
 #include <chrono>
 #include <cmath>
+#include <cstdint>
 #include <fstream>
+#include <iomanip>
 #include <iostream>
+#include <limits>
 #include <sstream>
 #include <stdexcept>
+#include <string_view>
 #include <thread>
 #include <vector>
 
@@ -22,6 +27,14 @@ using namespace Tuner;
 #ifndef TAPERED
 static_assert(false, "Tuner requires TAPERED to be defined")
 #endif
+static_assert(
+    TuneEval::l2_regularization > 0,
+    "A positive L2 value is required for a strongly convex objective");
+static_assert(
+    TuneEval::lbfgs_history_size > 0
+        && TuneEval::validation_interval > 0
+        && TuneEval::early_stopping_patience > 0,
+    "Optimizer intervals and history sizes must be positive");
 
 struct WdlMarker
 {
@@ -41,6 +54,7 @@ struct Entry
     tune_t wdl;
     bool white_to_move;
     tune_t additional_score;
+    uint64_t split_key;
 #if TAPERED
     int32_t phase;
     tune_t endgame_scale;
@@ -393,6 +407,27 @@ static void print_parameter_non_zero_coverage(const parameters_t& parameters, co
     cout << endl;
 }
 
+static uint64_t avalanche_split_key(uint64_t hash)
+{
+    hash ^= hash >> 30;
+    hash *= 0xBF58476D1CE4E5B9ULL;
+    hash ^= hash >> 27;
+    hash *= 0x94D049BB133111EBULL;
+    hash ^= hash >> 31;
+    return hash;
+}
+
+static uint64_t stable_split_key(std::string_view text)
+{
+    uint64_t hash = 14695981039346656037ULL;
+    for (const unsigned char ch : text)
+    {
+        hash ^= ch;
+        hash *= 1099511628211ULL;
+    }
+    return avalanche_split_key(hash);
+}
+
 static void parse_fen(const bool side_to_move_wdl, const parameters_t& parameters, vector<Entry>& entries, const string& original_fen)
 {
     if constexpr (print_data_entries)
@@ -412,6 +447,7 @@ static void parse_fen(const bool side_to_move_wdl, const parameters_t& parameter
     }*/
 
     Entry entry;
+    entry.split_key = stable_split_key(original_fen);
     entry.white_to_move = get_fen_color_to_move(original_fen);
 #if TAPERED
     entry.endgame_scale = eval_result.endgame_scale;
@@ -551,126 +587,752 @@ static void load_fens(ThreadPool& thread_pool, const DataSource& source, const p
     parse_fens(thread_pool, source, fens, parameters, start, entries);
 }
 
-static tune_t sigmoid(const tune_t K, const tune_t eval)
+static tune_t sigmoid_from_logit(const tune_t logit)
 {
-    return static_cast<tune_t>(1) / (static_cast<tune_t>(1) + exp(-K * eval / static_cast<tune_t>(400)));
+    if (logit >= 0)
+    {
+        return static_cast<tune_t>(1)
+            / (static_cast<tune_t>(1) + exp(-logit));
+    }
+    const tune_t exp_logit = exp(logit);
+    return exp_logit / (static_cast<tune_t>(1) + exp_logit);
 }
 
-static tune_t get_average_error(ThreadPool& thread_pool, const vector<Entry>& entries, const parameters_t& parameters, tune_t K)
+static tune_t cross_entropy_from_logit(const tune_t label, const tune_t logit)
 {
-    array<tune_t, thread_count> thread_errors;
-    for(int thread_id = 0; thread_id < thread_count; thread_id++)
+    return max(logit, static_cast<tune_t>(0))
+        - label * logit
+        + log1p(exp(-abs(logit)));
+}
+
+static parameters_t zero_parameters(const size_t size)
+{
+#if TAPERED
+    return parameters_t(size, pair_t{});
+#else
+    return parameters_t(size, 0);
+#endif
+}
+
+static tune_t parameter_dot(const parameters_t& lhs, const parameters_t& rhs)
+{
+    tune_t result = 0;
+    for (size_t index = 0; index < lhs.size(); ++index)
     {
-        thread_pool.enqueue([thread_id, &thread_errors, &entries, &parameters, K]()
+#if TAPERED
+        for (int phase = 0; phase < 2; ++phase)
         {
-            const auto entries_per_thread = entries.size() / thread_count;
-            const auto start = static_cast<int>(thread_id * entries_per_thread);
-            const auto end = static_cast<int>((thread_id + 1) * entries_per_thread - 1);
-            tune_t error = 0;
-            for (int i = start; i < end; i++)
+            result += lhs[index][phase] * rhs[index][phase];
+        }
+#else
+        result += lhs[index] * rhs[index];
+#endif
+    }
+    return result;
+}
+
+static tune_t parameter_infinity_norm(const parameters_t& parameters)
+{
+    tune_t result = 0;
+    for (size_t index = 0; index < parameters.size(); ++index)
+    {
+#if TAPERED
+        for (int phase = 0; phase < 2; ++phase)
+        {
+            result = max(result, abs(parameters[index][phase]));
+        }
+#else
+        result = max(result, abs(parameters[index]));
+#endif
+    }
+    return result;
+}
+
+static void add_scaled(
+    parameters_t& destination,
+    const parameters_t& source,
+    const tune_t scale)
+{
+    for (size_t index = 0; index < destination.size(); ++index)
+    {
+#if TAPERED
+        for (int phase = 0; phase < 2; ++phase)
+        {
+            destination[index][phase] += scale * source[index][phase];
+        }
+#else
+        destination[index] += scale * source[index];
+#endif
+    }
+}
+
+static parameters_t parameter_difference(
+    const parameters_t& lhs,
+    const parameters_t& rhs)
+{
+    parameters_t result = lhs;
+    add_scaled(result, rhs, static_cast<tune_t>(-1));
+    return result;
+}
+
+static void scale_parameters(parameters_t& parameters, const tune_t scale)
+{
+    for (size_t index = 0; index < parameters.size(); ++index)
+    {
+#if TAPERED
+        for (int phase = 0; phase < 2; ++phase)
+        {
+            parameters[index][phase] *= scale;
+        }
+#else
+        parameters[index] *= scale;
+#endif
+    }
+}
+
+struct ObjectiveResult
+{
+    tune_t loss = 0;
+    parameters_t gradient;
+    parameters_t hessian_diagonal;
+};
+
+static ObjectiveResult compute_objective(
+    ThreadPool& thread_pool,
+    const vector<Entry>& entries,
+    const parameters_t& parameters,
+    const tune_t K,
+    const parameters_t& anchor,
+    const tune_t l2_regularization,
+    const bool need_derivatives)
+{
+    if (entries.empty())
+    {
+        throw runtime_error("Cannot evaluate an empty dataset");
+    }
+
+    struct ThreadObjective
+    {
+        tune_t loss = 0;
+        parameters_t gradient;
+        parameters_t hessian_diagonal;
+    };
+
+    array<ThreadObjective, thread_count> thread_objectives;
+    for (int thread_id = 0; thread_id < thread_count; ++thread_id)
+    {
+        thread_pool.enqueue([
+            thread_id,
+            &thread_objectives,
+            &entries,
+            &parameters,
+            K,
+            need_derivatives]()
+        {
+            ThreadObjective result;
+            if (need_derivatives)
             {
-                const auto& entry = entries[i];
-                const auto eval = linear_eval(entry, parameters);
-                const auto sig = sigmoid(K, eval);
-                const auto diff = entry.wdl - sig;
-                const auto entry_error = pow(diff, 2);
-                error += entry_error;
+                result.gradient = zero_parameters(parameters.size());
+                result.hessian_diagonal = zero_parameters(parameters.size());
             }
-            thread_errors[thread_id] = error;
+
+            const size_t start =
+                entries.size() * static_cast<size_t>(thread_id) / thread_count;
+            const size_t end =
+                entries.size() * static_cast<size_t>(thread_id + 1) / thread_count;
+            const tune_t logit_scale = K / static_cast<tune_t>(400);
+
+            for (size_t index = start; index < end; ++index)
+            {
+                const Entry& entry = entries[index];
+                const tune_t eval = linear_eval(entry, parameters);
+                const tune_t logit = logit_scale * eval;
+                const tune_t probability = sigmoid_from_logit(logit);
+                result.loss += cross_entropy_from_logit(entry.wdl, logit);
+
+                if (!need_derivatives)
+                {
+                    continue;
+                }
+
+                const tune_t residual = probability - entry.wdl;
+                const tune_t curvature = probability
+                    * (static_cast<tune_t>(1) - probability);
+#if TAPERED
+                const tune_t mg_phase =
+                    entry.phase / static_cast<tune_t>(24);
+                const tune_t eg_phase =
+                    (static_cast<tune_t>(24) - entry.phase)
+                    / static_cast<tune_t>(24);
+#endif
+
+                for (const CoefficientEntry& coefficient : entry.coefficients)
+                {
+#if TAPERED
+                    const tune_t mg_logit_derivative =
+                        logit_scale * coefficient.value * mg_phase;
+                    const tune_t eg_logit_derivative =
+                        logit_scale * coefficient.value * eg_phase
+                        * entry.endgame_scale;
+                    result.gradient[coefficient.index]
+                        [static_cast<int32_t>(PhaseStages::Midgame)]
+                        += residual * mg_logit_derivative;
+                    result.gradient[coefficient.index]
+                        [static_cast<int32_t>(PhaseStages::Endgame)]
+                        += residual * eg_logit_derivative;
+                    result.hessian_diagonal[coefficient.index]
+                        [static_cast<int32_t>(PhaseStages::Midgame)]
+                        += curvature * mg_logit_derivative * mg_logit_derivative;
+                    result.hessian_diagonal[coefficient.index]
+                        [static_cast<int32_t>(PhaseStages::Endgame)]
+                        += curvature * eg_logit_derivative * eg_logit_derivative;
+#else
+                    const tune_t logit_derivative =
+                        logit_scale * coefficient.value;
+                    result.gradient[coefficient.index]
+                        += residual * logit_derivative;
+                    result.hessian_diagonal[coefficient.index]
+                        += curvature * logit_derivative * logit_derivative;
+#endif
+                }
+            }
+            thread_objectives[thread_id] = std::move(result);
         });
     }
 
     thread_pool.wait_for_completion();
 
-    tune_t total_error = 0;
-    for (int thread_id = 0; thread_id < thread_count; thread_id++)
+    ObjectiveResult result;
+    if (need_derivatives)
     {
-        total_error += thread_errors[thread_id];
+        result.gradient = zero_parameters(parameters.size());
+        result.hessian_diagonal = zero_parameters(parameters.size());
     }
 
-    const tune_t avg_error = total_error / static_cast<tune_t>(entries.size());
-    return avg_error;
+    for (const ThreadObjective& thread_result : thread_objectives)
+    {
+        result.loss += thread_result.loss;
+        if (need_derivatives)
+        {
+            add_scaled(result.gradient, thread_result.gradient, 1);
+            add_scaled(
+                result.hessian_diagonal,
+                thread_result.hessian_diagonal,
+                1);
+        }
+    }
+
+    const tune_t inverse_count =
+        static_cast<tune_t>(1) / static_cast<tune_t>(entries.size());
+    result.loss *= inverse_count;
+    if (need_derivatives)
+    {
+        scale_parameters(result.gradient, inverse_count);
+        scale_parameters(result.hessian_diagonal, inverse_count);
+    }
+
+    for (size_t index = 0; index < parameters.size(); ++index)
+    {
+#if TAPERED
+        for (int phase = 0; phase < 2; ++phase)
+        {
+            const tune_t delta =
+                parameters[index][phase] - anchor[index][phase];
+            result.loss += static_cast<tune_t>(0.5)
+                * l2_regularization * delta * delta;
+            if (need_derivatives)
+            {
+                result.gradient[index][phase] += l2_regularization * delta;
+                result.hessian_diagonal[index][phase] += l2_regularization;
+            }
+        }
+#else
+        const tune_t delta = parameters[index] - anchor[index];
+        result.loss += static_cast<tune_t>(0.5)
+            * l2_regularization * delta * delta;
+        if (need_derivatives)
+        {
+            result.gradient[index] += l2_regularization * delta;
+            result.hessian_diagonal[index] += l2_regularization;
+        }
+#endif
+    }
+    return result;
 }
 
-static tune_t find_optimal_k(ThreadPool& thread_pool, const vector<Entry>& entries, const parameters_t& parameters)
+struct KObjective
 {
-    constexpr tune_t rate = 10;
-    constexpr tune_t delta = 1e-5;
-    constexpr tune_t deviation_goal = 1e-6;
-    tune_t K = 2.5;
-    tune_t deviation = 1;
+    tune_t loss = 0;
+    tune_t gradient = 0;
+    tune_t curvature = 0;
+};
 
-    while (fabs(deviation) > deviation_goal)
+static KObjective compute_k_objective(
+    ThreadPool& thread_pool,
+    const vector<Entry>& entries,
+    const parameters_t& parameters,
+    const tune_t K)
+{
+    array<KObjective, thread_count> thread_results{};
+    for (int thread_id = 0; thread_id < thread_count; ++thread_id)
     {
-        const tune_t up = get_average_error(thread_pool, entries, parameters, K + delta);
-        const tune_t down = get_average_error(thread_pool, entries, parameters, K - delta);
-        deviation = (up - down) / (2 * delta);
-        cout << "Current K: " << K << ", up: " << up << ", down: " << down << ", deviation: " << deviation << endl;
-        K -= deviation * rate;
+        thread_pool.enqueue([
+            thread_id,
+            &thread_results,
+            &entries,
+            &parameters,
+            K]()
+        {
+            KObjective result;
+            const size_t start =
+                entries.size() * static_cast<size_t>(thread_id) / thread_count;
+            const size_t end =
+                entries.size() * static_cast<size_t>(thread_id + 1) / thread_count;
+
+            for (size_t index = start; index < end; ++index)
+            {
+                const Entry& entry = entries[index];
+                const tune_t eval_scale =
+                    linear_eval(entry, parameters) / static_cast<tune_t>(400);
+                const tune_t logit = K * eval_scale;
+                const tune_t probability = sigmoid_from_logit(logit);
+                result.loss += cross_entropy_from_logit(entry.wdl, logit);
+                result.gradient +=
+                    (probability - entry.wdl) * eval_scale;
+                result.curvature += probability
+                    * (static_cast<tune_t>(1) - probability)
+                    * eval_scale * eval_scale;
+            }
+            thread_results[thread_id] = result;
+        });
+    }
+    thread_pool.wait_for_completion();
+
+    KObjective result;
+    for (const KObjective& thread_result : thread_results)
+    {
+        result.loss += thread_result.loss;
+        result.gradient += thread_result.gradient;
+        result.curvature += thread_result.curvature;
+    }
+    const tune_t inverse_count =
+        static_cast<tune_t>(1) / static_cast<tune_t>(entries.size());
+    result.loss *= inverse_count;
+    result.gradient *= inverse_count;
+    result.curvature *= inverse_count;
+    return result;
+}
+
+static tune_t find_optimal_k(
+    ThreadPool& thread_pool,
+    const vector<Entry>& entries,
+    const parameters_t& parameters)
+{
+    constexpr tune_t minimum_k = 1e-6;
+    constexpr tune_t armijo = 1e-4;
+    tune_t K = 2.5;
+    KObjective objective =
+        compute_k_objective(thread_pool, entries, parameters, K);
+
+    for (int iteration = 0; iteration < 50; ++iteration)
+    {
+        if (abs(objective.gradient) <= 1e-10)
+        {
+            break;
+        }
+        if (K <= minimum_k && objective.gradient >= 0)
+        {
+            break;
+        }
+        if (!(objective.curvature > 0) || !isfinite(objective.curvature))
+        {
+            throw runtime_error("K optimization has no positive curvature");
+        }
+
+        const tune_t direction =
+            -objective.gradient / objective.curvature;
+        tune_t step = 1;
+        bool accepted = false;
+
+        for (int line_search = 0; line_search < 30; ++line_search)
+        {
+            const tune_t candidate_k =
+                max(minimum_k, K + step * direction);
+            const KObjective candidate =
+                compute_k_objective(
+                    thread_pool,
+                    entries,
+                    parameters,
+                    candidate_k);
+            if (candidate.loss <= objective.loss
+                + armijo * objective.gradient * (candidate_k - K))
+            {
+                K = candidate_k;
+                objective = candidate;
+                accepted = true;
+                break;
+            }
+            step *= static_cast<tune_t>(0.5);
+        }
+
+        if (!accepted)
+        {
+            throw runtime_error("K line search failed");
+        }
     }
 
+    cout << "K cross-entropy = " << objective.loss << endl;
     return K;
 }
 
-static void update_single_gradient(parameters_t& gradient, const Entry& entry, const parameters_t& params, tune_t K) {
-    const tune_t eval = linear_eval(entry, params);
-    const tune_t sig = sigmoid(K, eval);
-    const tune_t res = (entry.wdl - sig) * sig * (1 - sig);
-
-#if TAPERED
-    const auto mg_base = res * (entry.phase / static_cast<tune_t>(24));
-    const auto eg_base = res - mg_base;
-#endif
-
-    for (const auto& coefficient : entry.coefficients)
+static vector<Entry> split_validation_entries(vector<Entry>& training_entries)
+{
+    const tune_t validation_fraction = TuneEval::validation_fraction;
+    if (validation_fraction <= 0)
     {
-#if TAPERED
-        gradient[coefficient.index][static_cast<int32_t>(PhaseStages::Midgame)] += mg_base * coefficient.value;
-        gradient[coefficient.index][static_cast<int32_t>(PhaseStages::Endgame)] += eg_base * coefficient.value * entry.endgame_scale;
-#else
-        gradient[coefficient.index] += res * coefficient.value;
-#endif
+        return {};
     }
+    if (validation_fraction >= 1)
+    {
+        throw runtime_error("validation_fraction must be less than 1");
+    }
+
+    const long double hash_range =
+        static_cast<long double>(numeric_limits<uint64_t>::max());
+    const uint64_t validation_threshold = static_cast<uint64_t>(
+        validation_fraction * hash_range);
+
+    vector<Entry> training;
+    vector<Entry> validation;
+    training.reserve(training_entries.size());
+    validation.reserve(static_cast<size_t>(
+        validation_fraction * training_entries.size()) + 1);
+
+    for (Entry& entry : training_entries)
+    {
+        const uint64_t seeded_key = avalanche_split_key(
+            entry.split_key
+            ^ (static_cast<uint64_t>(TuneEval::validation_seed)
+                * 0x9E3779B97F4A7C15ULL));
+        if (seeded_key
+            <= validation_threshold)
+        {
+            validation.push_back(std::move(entry));
+        }
+        else
+        {
+            training.push_back(std::move(entry));
+        }
+    }
+
+    if (training.empty() || validation.empty())
+    {
+        throw runtime_error(
+            "Training/validation split produced an empty partition");
+    }
+    training_entries = std::move(training);
+    return validation;
 }
 
-static void compute_gradient(ThreadPool& thread_pool, parameters_t& gradient, const vector<Entry>& entries, const parameters_t& params, tune_t K)
+struct LbfgsHistory
 {
-    array<parameters_t, thread_count> thread_gradients;
-    for(int thread_id = 0; thread_id < thread_count; thread_id++)
+    vector<parameters_t> parameter_steps;
+    vector<parameters_t> gradient_steps;
+    vector<tune_t> inverse_curvatures;
+};
+
+static parameters_t get_lbfgs_direction(
+    const ObjectiveResult& objective,
+    const LbfgsHistory& history)
+{
+    parameters_t direction = objective.gradient;
+    vector<tune_t> alpha(history.parameter_steps.size(), 0);
+
+    for (size_t reverse_index = history.parameter_steps.size();
+        reverse_index > 0;
+        --reverse_index)
     {
-        thread_pool.enqueue([thread_id, &thread_gradients, &entries, &params, K]()
-        {
-            const auto entries_per_thread = entries.size() / thread_count;
-            const auto start = static_cast<int>(thread_id * entries_per_thread);
-            const auto end = static_cast<int>((thread_id + 1) * entries_per_thread - 1);
-#if TAPERED
-            parameters_t gradient = parameters_t(params.size(), pair_t{});
-#else
-            parameters_t gradient = parameters_t(params.size(), 0);
-#endif
-            for (int i = start; i < end; i++)
-            {
-                const auto& entry = entries[i];
-                update_single_gradient(gradient, entry, params, K);
-            }
-            thread_gradients[thread_id] = gradient;
-        });
+        const size_t index = reverse_index - 1;
+        alpha[index] = history.inverse_curvatures[index]
+            * parameter_dot(history.parameter_steps[index], direction);
+        add_scaled(
+            direction,
+            history.gradient_steps[index],
+            -alpha[index]);
     }
 
-    thread_pool.wait_for_completion();
-
-    for (int thread_id = 0; thread_id < thread_count; thread_id++)
+    if (history.parameter_steps.empty())
     {
-        for(auto parameter_index = 0; parameter_index < params.size(); parameter_index++)
+        for (size_t index = 0; index < direction.size(); ++index)
         {
 #if TAPERED
-            gradient[parameter_index][static_cast<int32_t>(PhaseStages::Midgame)] += thread_gradients[thread_id][parameter_index][static_cast<int32_t>(PhaseStages::Midgame)];
-            gradient[parameter_index][static_cast<int32_t>(PhaseStages::Endgame)] += thread_gradients[thread_id][parameter_index][static_cast<int32_t>(PhaseStages::Endgame)];
+            for (int phase = 0; phase < 2; ++phase)
+            {
+                direction[index][phase] /=
+                    max(objective.hessian_diagonal[index][phase], 1e-12);
+            }
 #else
-            gradient[parameter_index] += thread_gradients[thread_id][parameter_index];
+            direction[index] /=
+                max(objective.hessian_diagonal[index], 1e-12);
 #endif
         }
     }
+    else
+    {
+        const parameters_t& last_parameter_step =
+            history.parameter_steps.back();
+        const parameters_t& last_gradient_step =
+            history.gradient_steps.back();
+        const tune_t curvature =
+            parameter_dot(last_parameter_step, last_gradient_step);
+        const tune_t gradient_curvature =
+            parameter_dot(last_gradient_step, last_gradient_step);
+        const tune_t initial_hessian_scale =
+            gradient_curvature > 0
+            ? curvature / gradient_curvature
+            : static_cast<tune_t>(1);
+        scale_parameters(direction, initial_hessian_scale);
+    }
+
+    for (size_t index = 0; index < history.parameter_steps.size(); ++index)
+    {
+        const tune_t beta = history.inverse_curvatures[index]
+            * parameter_dot(history.gradient_steps[index], direction);
+        add_scaled(
+            direction,
+            history.parameter_steps[index],
+            alpha[index] - beta);
+    }
+
+    scale_parameters(direction, static_cast<tune_t>(-1));
+    return direction;
+}
+
+static parameters_t optimize_parameters(
+    ThreadPool& thread_pool,
+    const vector<Entry>& training_entries,
+    const vector<Entry>& validation_entries,
+    parameters_t parameters,
+    const parameters_t& anchor,
+    const tune_t K,
+    const high_resolution_clock::time_point start)
+{
+    constexpr tune_t armijo = 1e-4;
+    constexpr tune_t minimum_step = 1e-12;
+    LbfgsHistory history;
+    ObjectiveResult objective = compute_objective(
+        thread_pool,
+        training_entries,
+        parameters,
+        K,
+        anchor,
+        TuneEval::l2_regularization,
+        true);
+
+    tune_t best_validation_loss = validation_entries.empty()
+        ? objective.loss
+        : compute_objective(
+            thread_pool,
+            validation_entries,
+            parameters,
+            K,
+            anchor,
+            0,
+            false).loss;
+    parameters_t best_parameters = parameters;
+    int32_t checks_without_improvement = 0;
+
+    cout << "Initial training objective = " << objective.loss << endl;
+    if (!validation_entries.empty())
+    {
+        cout << "Initial validation cross-entropy = "
+             << best_validation_loss << endl;
+    }
+
+    for (int32_t iteration = 1;
+        iteration <= TuneEval::max_epoch;
+        ++iteration)
+    {
+        const tune_t gradient_norm =
+            parameter_infinity_norm(objective.gradient);
+        if (gradient_norm <= TuneEval::gradient_tolerance)
+        {
+            cout << "Converged: gradient infinity norm "
+                 << gradient_norm << endl;
+            break;
+        }
+
+        parameters_t direction =
+            get_lbfgs_direction(objective, history);
+        tune_t directional_derivative =
+            parameter_dot(objective.gradient, direction);
+        if (!(directional_derivative < 0)
+            || !isfinite(directional_derivative))
+        {
+            history = {};
+            direction = objective.gradient;
+            scale_parameters(direction, static_cast<tune_t>(-1));
+            directional_derivative =
+                -parameter_dot(objective.gradient, objective.gradient);
+        }
+
+        tune_t step = 1;
+        parameters_t candidate_parameters;
+        ObjectiveResult candidate_loss;
+        bool accepted = false;
+        for (int line_search = 0; line_search < 40; ++line_search)
+        {
+            candidate_parameters = parameters;
+            add_scaled(candidate_parameters, direction, step);
+            candidate_loss = compute_objective(
+                thread_pool,
+                training_entries,
+                candidate_parameters,
+                K,
+                anchor,
+                TuneEval::l2_regularization,
+                false);
+
+            if (isfinite(candidate_loss.loss)
+                && candidate_loss.loss <= objective.loss
+                    + armijo * step * directional_derivative)
+            {
+                accepted = true;
+                break;
+            }
+            step *= static_cast<tune_t>(0.5);
+            if (step < minimum_step)
+            {
+                break;
+            }
+        }
+
+        if (!accepted)
+        {
+            cout << "Stopping: line search could not find a lower objective"
+                 << endl;
+            break;
+        }
+
+        ObjectiveResult candidate_objective = compute_objective(
+            thread_pool,
+            training_entries,
+            candidate_parameters,
+            K,
+            anchor,
+            TuneEval::l2_regularization,
+            true);
+        parameters_t parameter_step =
+            parameter_difference(candidate_parameters, parameters);
+        parameters_t gradient_step =
+            parameter_difference(
+                candidate_objective.gradient,
+                objective.gradient);
+        const tune_t curvature =
+            parameter_dot(parameter_step, gradient_step);
+        const tune_t curvature_scale = sqrt(
+            max(parameter_dot(parameter_step, parameter_step), 0.0)
+            * max(parameter_dot(gradient_step, gradient_step), 0.0));
+        if (curvature > 1e-12 * max(curvature_scale, 1.0))
+        {
+            if (history.parameter_steps.size()
+                == static_cast<size_t>(TuneEval::lbfgs_history_size))
+            {
+                history.parameter_steps.erase(
+                    history.parameter_steps.begin());
+                history.gradient_steps.erase(
+                    history.gradient_steps.begin());
+                history.inverse_curvatures.erase(
+                    history.inverse_curvatures.begin());
+            }
+            history.parameter_steps.push_back(std::move(parameter_step));
+            history.gradient_steps.push_back(std::move(gradient_step));
+            history.inverse_curvatures.push_back(
+                static_cast<tune_t>(1) / curvature);
+        }
+
+        const tune_t previous_loss = objective.loss;
+        parameters = std::move(candidate_parameters);
+        objective = std::move(candidate_objective);
+
+        const bool validation_check =
+            iteration % TuneEval::validation_interval == 0
+            || iteration == TuneEval::max_epoch;
+        if (validation_check)
+        {
+            const tune_t validation_loss = validation_entries.empty()
+                ? objective.loss
+                : compute_objective(
+                    thread_pool,
+                    validation_entries,
+                    parameters,
+                    K,
+                    anchor,
+                    0,
+                    false).loss;
+            print_elapsed(start);
+            cout << "Iteration " << iteration
+                 << ", train objective " << setprecision(17)
+                 << objective.loss
+                 << ", validation CE " << validation_loss
+                 << ", |gradient|_inf "
+                 << parameter_infinity_norm(objective.gradient)
+                 << ", step " << step << endl;
+
+            if (validation_loss
+                < best_validation_loss - TuneEval::validation_min_delta)
+            {
+                best_validation_loss = validation_loss;
+                best_parameters = parameters;
+                checks_without_improvement = 0;
+            }
+            else
+            {
+                ++checks_without_improvement;
+                if (!validation_entries.empty()
+                    && checks_without_improvement
+                        >= TuneEval::early_stopping_patience)
+                {
+                    cout << "Early stopping: validation loss did not improve "
+                         << "for " << checks_without_improvement
+                         << " checks" << endl;
+                    break;
+                }
+            }
+        }
+
+        const tune_t relative_improvement =
+            (previous_loss - objective.loss)
+            / max(abs(previous_loss), static_cast<tune_t>(1));
+        if (relative_improvement >= 0
+            && relative_improvement <= TuneEval::relative_loss_tolerance)
+        {
+            cout << "Converged: relative training-objective improvement "
+                 << relative_improvement << endl;
+            break;
+        }
+    }
+
+    const tune_t final_validation_loss = validation_entries.empty()
+        ? objective.loss
+        : compute_objective(
+            thread_pool,
+            validation_entries,
+            parameters,
+            K,
+            anchor,
+            0,
+            false).loss;
+    if (final_validation_loss
+        < best_validation_loss - TuneEval::validation_min_delta)
+    {
+        best_validation_loss = final_validation_loss;
+        best_parameters = parameters;
+    }
+
+    cout << "Best validation cross-entropy = "
+         << best_validation_loss << endl;
+    return best_parameters;
 }
 
 
@@ -692,14 +1354,24 @@ void Tuner::run(const std::vector<DataSource>& sources)
 
     vector<Entry> entries;
 
-    vector<string> fens;
     for (const auto& source : sources)
     {
         load_fens(thread_pool, source, parameters, start, entries);
     }
     cout << "Data loading complete" << endl << endl;
 
+    vector<Entry> validation_entries =
+        split_validation_entries(entries);
+    cout << "Training positions: " << entries.size() << endl;
+    cout << "Validation positions: " << validation_entries.size() << endl;
+    cout << "Training dataset:" << endl;
     print_statistics(parameters, entries);
+    if (!validation_entries.empty())
+    {
+        cout << "Validation dataset:" << endl;
+        print_statistics(parameters, validation_entries);
+    }
+    cout << "Training feature coverage:" << endl;
     print_parameter_non_zero_coverage(parameters, entries);
 
     if constexpr (TuneEval::retune_from_zero)
@@ -717,6 +1389,7 @@ void Tuner::run(const std::vector<DataSource>& sources)
 
     cout << "Initial parameters:" << endl;
     TuneEval::print_parameters(parameters);
+    const parameters_t anchor = parameters;
 
     tune_t K;
     if constexpr (TuneEval::preferred_k <= 0)
@@ -731,65 +1404,17 @@ void Tuner::run(const std::vector<DataSource>& sources)
     }
     cout << "K = " << K << endl;
 
-    const auto avg_error = get_average_error(thread_pool, entries, parameters, K);
-    cout << "Initial error = " << avg_error << endl;
-
-    const auto loop_start = high_resolution_clock::now();
-    tune_t learning_rate = TuneEval::initial_learning_rate;
-    int32_t max_tune_epoch = TuneEval::max_epoch;
-#if TAPERED
-    parameters_t momentum(parameters.size(), pair_t{});
-    parameters_t velocity(parameters.size(), pair_t{});
-#else
-    parameters_t momentum(parameters.size(), 0);
-    parameters_t velocity(parameters.size(), 0);
-#endif
-    for (int32_t epoch = 1; epoch < max_tune_epoch; epoch++)
-    {
-#if TAPERED
-        parameters_t gradient(parameters.size(), pair_t{});
-#else
-        parameters_t gradient(parameters.size(), 0);
-#endif
-
-        compute_gradient(thread_pool, gradient, entries, parameters, K);
-
-        constexpr tune_t beta1 = 0.9;
-        constexpr tune_t beta2 = 0.999;
-
-        for (int parameter_index = 0; parameter_index < parameters.size(); parameter_index++) {
-#if TAPERED
-            for (int phase_stage = 0; phase_stage < 2; phase_stage++)
-            {
-                const tune_t grad = -K / static_cast<tune_t>(400) * gradient[parameter_index][phase_stage] / static_cast<tune_t>(entries.size());
-                momentum[parameter_index][phase_stage] = beta1 * momentum[parameter_index][phase_stage] + (1 - beta1) * grad;
-                velocity[parameter_index][phase_stage] = beta2 * velocity[parameter_index][phase_stage] + (1 - beta2) * pow(grad, 2);
-                parameters[parameter_index][phase_stage] -= learning_rate * momentum[parameter_index][phase_stage] / (static_cast<tune_t>(1e-8) + sqrt(velocity[parameter_index][phase_stage]));
-            }
-#else
-            const tune_t grad = -K / 400.0 * gradient[parameter_index] / static_cast<tune_t>(entries.size());
-            momentum[parameter_index] = beta1 * momentum[parameter_index] + (1 - beta1) * grad;
-            velocity[parameter_index] = beta2 * velocity[parameter_index] + (1 - beta2) * pow(grad, 2);
-            parameters[parameter_index] -= learning_rate * momentum[parameter_index] / (1e-8 + sqrt(velocity[parameter_index]));
-#endif
-
-        }
-        TuneEval::normalize_pst(parameters);
-        if (epoch % 250 == 0)
-        {
-            const auto elapsed_ms = duration_cast<milliseconds>(high_resolution_clock::now() - loop_start).count();
-            const auto epochs_per_second = epoch * 1000.0 / elapsed_ms;
-            const tune_t error = get_average_error(thread_pool, entries, parameters, K);
-            print_elapsed(start);
-            cout << "Epoch " << epoch << " (" << epochs_per_second << " eps), error " << std::setprecision(17) << error << ", LR " << learning_rate << endl;
-            if (epoch % 1000 == 0) TuneEval::print_parameters(parameters);
-        }
-
-        if (epoch % TuneEval::learning_rate_drop_interval == 0)
-        {
-            learning_rate *= TuneEval::learning_rate_drop_ratio;
-        }
-    }
+    parameters = optimize_parameters(
+        thread_pool,
+        entries,
+        validation_entries,
+        parameters,
+        anchor,
+        K,
+        start);
 
     thread_pool.stop();
+
+    cout << "Best validation parameters:" << endl;
+    TuneEval::print_parameters(parameters);
 }
