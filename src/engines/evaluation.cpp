@@ -1,4 +1,4 @@
-#include "evaluation.h"
+Ôªø#include "evaluation.h"
 #include <memory>
 static thread_local std::unique_ptr<std::array<PawnEvalEntry, PAWN_HASH_SIZE>> pawn_evaluation_table;
 PawnEvalEntry& get_pawn_entry(size_t idx) {
@@ -30,7 +30,7 @@ int evaluate(const Board& board, Trace* trace, uint8_t terms_mask) {
 	eval_mobility<isTracing>(score, ctx, trace);
 	eval_rook_activity<isTracing>(score, ctx, trace);
 	eval_minor_pieces<isTracing>(score, ctx, trace);
-	return tapered({ 0,0 }, board.get_game_phase());
+	return tapered({0,0}, board.get_game_phase());
 
 }
 template int evaluate<false>(const Board& board, Trace* trace, uint8_t terms_mask);
@@ -73,12 +73,6 @@ void eval_pawns(EvaluationResult& score, EvalContext& ctx, Trace* trace) {
 	PawnEvalEntry& entry = get_pawn_entry(idx);
 	if (!isTracing && entry.valid && entry.key == pawn_key) {
 		score += entry.score;
-		ctx.backward[0] = entry.backward[0];
-		ctx.backward[1] = entry.backward[1];
-		ctx.isolated[0] = entry.isolated[0];
-		ctx.isolated[1] = entry.isolated[1];
-		ctx.passed[0] = entry.passed[0];
-		ctx.passed[1] = entry.passed[1];
 		ctx.files_with_no_color_pawns[0] = entry.file_info[0];
 		ctx.files_with_no_color_pawns[1] = entry.file_info[1];
 		return;
@@ -93,12 +87,6 @@ void eval_pawns(EvaluationResult& score, EvalContext& ctx, Trace* trace) {
 	if (!isTracing) {
 		entry.key = pawn_key;
 		entry.score = entry_score;
-		entry.isolated[0] = ctx.isolated[0];
-		entry.isolated[1] = ctx.isolated[1];
-		entry.passed[0] = ctx.passed[0];
-		entry.passed[1] = ctx.passed[1];
-		entry.backward[0] = ctx.backward[0];
-		entry.backward[1] = ctx.backward[1];
 		entry.file_info[0] = ctx.files_with_no_color_pawns[0];
 		entry.file_info[1] = ctx.files_with_no_color_pawns[1];
 		entry.valid = true;
@@ -181,7 +169,7 @@ void eval_iso_passed(EvaluationResult& score, EvalContext& ctx, Trace* trace) {
 					addTerm<isTracing>(score, static_cast<EvalParam>(EvalParam::BLOCKED_ISOLANI_START + bucket), color == 0 ? 1 : -1, trace);
 				else
 					addTerm<isTracing>(score, static_cast<EvalParam>(EvalParam::ISOLANI_START + bucket), color == 0 ? 1 : -1, trace);
-				uint64_t defends = ctx.board.get_attacks_for_color(static_cast<Color>(color)) & bit64(pawn_square);
+				uint64_t defends = ctx.get_attacks(static_cast<Color>(color)) & bit64(pawn_square);
 				if (defends != 0) {
 					addTerm<isTracing>(score, static_cast<EvalParam>(EvalParam::PROTECTED_PASSED_PAWNS_START + bucket), color == 0 ? 1 : -1, trace);
 				}
@@ -631,7 +619,7 @@ void eval_mobility(EvaluationResult& score, const EvalContext& ctx, Trace* trace
 		int mob_count = 0;
 		for (int color = 0; color < 2; color++) {
 			int ecolor = color == 0 ? 1 : 0;
-			uint64_t enemy_attacks = ctx.board.get_attacks_for_color(static_cast<Color>(ecolor));
+			uint64_t enemy_attacks = ctx.get_attacks(static_cast<Color>(ecolor));
 			uint64_t pieces = ctx.get_pieces(color, pt);
 			while (pieces) {
 				int sq = get_lsb(pieces);
@@ -662,8 +650,8 @@ void eval_rook_activity(EvaluationResult& score, const EvalContext& ctx, Trace* 
 
 	int white_rook_square = get_lsb(ctx.get_pieces(0, PieceType::ROOK));
 	int black_rook_square = get_lsb(ctx.get_pieces(1, PieceType::ROOK));
-	int white_connected = get_rook_attacks(white_rook_square, ctx.get_all_pieces()) & ctx.get_pieces(0, PieceType::ROOK);
-	int black_connected = get_rook_attacks(black_rook_square, ctx.get_all_pieces()) & ctx.get_pieces(1, PieceType::ROOK);
+	uint64_t white_connected = get_rook_attacks(white_rook_square, ctx.get_all_pieces()) & ctx.get_pieces(0, PieceType::ROOK);
+	uint64_t black_connected = get_rook_attacks(black_rook_square, ctx.get_all_pieces()) & ctx.get_pieces(1, PieceType::ROOK);
 	connected_rooks += popcount(white_connected) - popcount(black_connected);
 	addTerm<isTracing>(score, EvalParam::CONNECTED_ROOKS, connected_rooks, trace);
 	addTerm<isTracing>(score, EvalParam::ROOK_ON_SEMI_OPEN_FILE, semi_open_count, trace);
@@ -698,7 +686,7 @@ void eval_bad_bishop(EvaluationResult& score, const EvalContext& ctx, Trace* tra
 			uint64_t bishop_color_mask = (bit64(sq) & LIGHT_SQUARES) != 0 ? LIGHT_SQUARES : DARK_SQUARES;
 
 
-			// Z‰hle blockierte eigene Bauern auf der gleichen Farbe
+			// Z√§hle blockierte eigene Bauern auf der gleichen Farbe
 			int blocked_pawns = 0;
 			uint64_t pawns_to_check = ctx.get_pieces(color, PieceType::PAWN) & bishop_color_mask;
 
@@ -706,7 +694,7 @@ void eval_bad_bishop(EvaluationResult& score, const EvalContext& ctx, Trace* tra
 				int pawn_sq = get_lsb(pawns_to_check);
 				int forward_sq = (color == 0) ? pawn_sq + 8 : pawn_sq - 8;
 
-				// Pr¸fe ob Bauer blockiert ist
+				// Pr√ºfe ob Bauer blockiert ist
 				if (forward_sq >= 0 && forward_sq < 64 && (ctx.get_all_pieces() & (1ULL << forward_sq))) {
 					blocked_penalty_count += color == 0 ? 1 : -1;
 				}
@@ -730,30 +718,30 @@ void eval_trapped_minor(EvaluationResult& score, const EvalContext& ctx, Trace* 
 	int trapped_knight_count = 0;
 
 	// Typische Fallen:
-	// - L‰ufer auf a7/h7 (Weiﬂ) oder a2/h2 (Schwarz) eingekesselt von Bauern
+	// - L√§ufer auf a7/h7 (Wei√ü) oder a2/h2 (Schwarz) eingekesselt von Bauern
 	// - Springer in der Ecke ohne Fluchtfelder
 
 	for (int color = 0; color < 2; color++) {
 		int ecolor = 1 - color;
 
-		// L‰ufer-Fallen
+		// L√§ufer-Fallen
 		uint64_t bishops = ctx.get_pieces(color, PieceType::BISHOP);
 		while (bishops) {
 			int sq = get_lsb(bishops);
 
-			// L‰ufer gefangen am Brettrand
+			// L√§ufer gefangen am Brettrand
 			bool is_trapped = false;
 
 			if (color == 0) {
-				// a7-Falle: L‰ufer auf a7, Bauer auf b6
+				// a7-Falle: L√§ufer auf a7, Bauer auf b6
 				if (sq == 48 && (ctx.get_pieces(ecolor, PieceType::PAWN) & (1ULL << 41))) is_trapped = true;
-				// h7-Falle: L‰ufer auf h7, Bauer auf g6
+				// h7-Falle: L√§ufer auf h7, Bauer auf g6
 				if (sq == 55 && (ctx.get_pieces(ecolor, PieceType::PAWN) & (1ULL << 46))) is_trapped = true;
 			}
 			else {
-				// a2-Falle: L‰ufer auf a2, Bauer auf b3
+				// a2-Falle: L√§ufer auf a2, Bauer auf b3
 				if (sq == 8 && (ctx.get_pieces(ecolor, PieceType::PAWN) & (1ULL << 17))) is_trapped = true;
-				// h2-Falle: L‰ufer auf h2, Bauer auf g3
+				// h2-Falle: L√§ufer auf h2, Bauer auf g3
 				if (sq == 15 && (ctx.get_pieces(ecolor, PieceType::PAWN) & (1ULL << 22))) is_trapped = true;
 			}
 
@@ -785,7 +773,7 @@ void eval_trapped_minor(EvaluationResult& score, const EvalContext& ctx, Trace* 
 					while (unoccupied_escapes) {
 						int escape_sq = get_lsb(unoccupied_escapes);
 						PieceType pt = ctx.get_piece_on_square(escape_sq);
-						if (see_capture(ctx.board, sq, escape_sq, static_cast<Color>(color), PieceType::KNIGHT, pt) >= 0) {
+						if (see_capture_ge(ctx.board, sq, escape_sq, static_cast<Color>(color), PieceType::KNIGHT, pt, 0)) {
 							is_trapped = false;
 							break;
 						}
@@ -809,7 +797,7 @@ void eval_fianchetto_bishop(EvaluationResult& score, const EvalContext& ctx, Tra
 	int intact_count = 0;
 	int broken_count = 0;
 
-	// Fianchetto-Positionen: b2, g2 (Weiﬂ), b7, g7 (Schwarz)
+	// Fianchetto-Positionen: b2, g2 (Wei√ü), b7, g7 (Schwarz)
 	const uint64_t WHITE_FIANCHETTO = (1ULL << 9) | (1ULL << 14);  // b2, g2
 	const uint64_t BLACK_FIANCHETTO = (1ULL << 49) | (1ULL << 54); // b7, g7
 
@@ -820,7 +808,7 @@ void eval_fianchetto_bishop(EvaluationResult& score, const EvalContext& ctx, Tra
 		while (bishops_fianchetto) {
 			int sq = get_lsb(bishops_fianchetto);
 
-			// Pr¸fe ob Bauernstruktur intakt ist (Bauer auf b3/g3 oder b6/g6)
+			// Pr√ºfe ob Bauernstruktur intakt ist (Bauer auf b3/g3 oder b6/g6)
 			int pawn_sq = (color == 0) ? sq + 8 : sq - 8;
 			bool pawn_structure_intact = (ctx.get_pieces(color, PieceType::PAWN) & (1ULL << pawn_sq)) != 0;
 
@@ -828,7 +816,7 @@ void eval_fianchetto_bishop(EvaluationResult& score, const EvalContext& ctx, Tra
 				intact_count += (color == 0) ? 1 : -1;
 			}
 			else {
-				// Strafe wenn Fianchetto-Bauer fehlt (schwacher Kˆnig)
+				// Strafe wenn Fianchetto-Bauer fehlt (schwacher K√∂nig)
 				broken_count += (color == 0) ? 1 : -1;
 			}
 
