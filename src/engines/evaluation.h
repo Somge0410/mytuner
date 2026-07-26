@@ -61,6 +61,11 @@ struct EvalContext {
 		}
 		return attacks[color_index];
 	}
+	void set_attacks(Color color, uint64_t attack_map) const {
+		const int color_index = to_int(color);
+		attacks[color_index] = attack_map;
+		attacks_initialized |= bit8(color_index);
+	}
 	bool is_file_open(int file) const {
 		if (file < 0 || file>7) return false;
 		return (get_open_files() & bit8(file)) != 0;
@@ -86,8 +91,6 @@ struct PawnEvalEntry {
 static_assert(sizeof(PawnEvalEntry) == 16);
 
 constexpr int PAWN_HASH_SIZE = 1 << 18;
-
-PawnEvalEntry compute_pawn_eval_entry(EvalContext& ctx);
 
 enum EvalTerms : uint8_t {
 	EVAL_MATERIAL = 1 << 0,
@@ -145,6 +148,9 @@ void eval_pawns(EvaluationResult& score, EvalContext& ctx, Trace* trace);
 
 template <bool isTracing>
 void eval_iso_passed(EvaluationResult& score, EvalContext& ctx, Trace* trace);
+
+template <bool isTracing>
+void eval_dynamic_pawns(EvaluationResult& score, EvalContext& ctx, Trace* trace);
 
 template <bool isTracing>
 void eval_backward(EvaluationResult& score, EvalContext& ctx, Trace* trace);

@@ -18,8 +18,8 @@ struct PstNormEntry {
 class TuneEval
 {
 public:
-    // We set this to true so we can pass our fixed 100-point pawns via the static score
-    constexpr static bool includes_additional_score = true;
+    // Every evaluation term is represented by a traced parameter.
+    constexpr static bool includes_additional_score = false;
 
     // We set this to true because using Chess::Board directly is much faster than FEN parsing
     constexpr static bool supports_external_chess_eval = false;

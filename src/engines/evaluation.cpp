@@ -7,6 +7,46 @@ PawnEvalEntry& get_pawn_entry(size_t idx) {
 	}
 	return (*pawn_evaluation_table)[idx];
 }
+
+namespace {
+void classify_pawns(EvalContext& ctx) {
+	for (int color = 0; color < 2; color++) {
+		const int ecolor = color == 0 ? 1 : 0;
+		const uint64_t own_pawns = ctx.get_pieces(color, PieceType::PAWN);
+		const uint64_t enemy_pawns = ctx.get_pieces(ecolor, PieceType::PAWN);
+		uint64_t pawns = own_pawns;
+
+		while (pawns) {
+			const int pawn_square = get_lsb(pawns);
+			const int file_index = file(pawn_square);
+			if ((enemy_pawns & PASSED_PAWN_MASK[color][pawn_square]) == 0) {
+				ctx.passed[color] |= bit64(pawn_square);
+			}
+			else if ((own_pawns & ADJACENT_FILE_MASK[file_index]) == 0) {
+				ctx.isolated[color] |= bit64(pawn_square);
+			}
+			pawns &= pawns - 1;
+		}
+	}
+}
+
+bool is_square_defended_by(const EvalContext& ctx, Color color, int square) {
+	const uint64_t own_pawns = ctx.get_pieces(color, PieceType::PAWN);
+	const uint64_t own_knights = ctx.get_pieces(color, PieceType::KNIGHT);
+	const uint64_t own_bishops = ctx.get_pieces(color, PieceType::BISHOP);
+	const uint64_t own_rooks = ctx.get_pieces(color, PieceType::ROOK);
+	const uint64_t own_queens = ctx.get_pieces(color, PieceType::QUEEN);
+	const uint64_t own_king = ctx.get_pieces(color, PieceType::KING);
+	const Color opposite = flip_color(color);
+
+	return (get_pawn_attacks(bit64(square), opposite) & own_pawns) != 0
+		|| (get_knight_attacks(square) & own_knights) != 0
+		|| (get_bishop_attacks(square, ctx.get_all_pieces()) & (own_bishops | own_queens)) != 0
+		|| (get_rook_attacks(square, ctx.get_all_pieces()) & (own_rooks | own_queens)) != 0
+		|| (get_king_attacks(square) & own_king) != 0;
+}
+}
+
 bool trace_eval_agree(const Board& board, const EvaluationResult weights[PARAM_COUNT]) {
 	Trace trace;
 	int eval = evaluate<true>(board, &trace);
@@ -30,7 +70,7 @@ int evaluate(const Board& board, Trace* trace, uint8_t terms_mask) {
 	eval_mobility<isTracing>(score, ctx, trace);
 	eval_rook_activity<isTracing>(score, ctx, trace);
 	eval_minor_pieces<isTracing>(score, ctx, trace);
-	return tapered({0,0}, board.get_game_phase());
+	return tapered(score, board.get_game_phase());
 
 }
 template int evaluate<false>(const Board& board, Trace* trace, uint8_t terms_mask);
@@ -67,115 +107,184 @@ void eval_positional(EvaluationResult& score, const Board& board, Trace* trace) 
 }
 template <bool isTracing>
 void eval_pawns(EvaluationResult& score, EvalContext& ctx, Trace* trace) {
-
 	uint64_t pawn_key = ctx.board.get_pawn_key();
 	int idx = pawn_key & (PAWN_HASH_SIZE - 1);
 	PawnEvalEntry& entry = get_pawn_entry(idx);
+
 	if (!isTracing && entry.valid && entry.key == pawn_key) {
 		score += entry.score;
 		ctx.files_with_no_color_pawns[0] = entry.file_info[0];
 		ctx.files_with_no_color_pawns[1] = entry.file_info[1];
-		return;
+		classify_pawns(ctx);
 	}
-	EvaluationResult entry_score = { 0,0 };
-	ctx.init_file_info();
-	eval_iso_passed<isTracing>(entry_score, ctx, trace);
-	eval_backward<isTracing>(entry_score, ctx, trace);
-	eval_double_pawns<isTracing>(entry_score, ctx, trace);
+	else {
+		EvaluationResult entry_score = { 0,0 };
+		ctx.init_file_info();
+		eval_iso_passed<isTracing>(entry_score, ctx, trace);
+		eval_double_pawns<isTracing>(entry_score, ctx, trace);
+		score += entry_score;
 
-	score += entry_score;
-	if (!isTracing) {
-		entry.key = pawn_key;
-		entry.score = entry_score;
-		entry.file_info[0] = ctx.files_with_no_color_pawns[0];
-		entry.file_info[1] = ctx.files_with_no_color_pawns[1];
-		entry.valid = true;
+		if (!isTracing) {
+			entry.key = pawn_key;
+			entry.score = entry_score;
+			entry.file_info[0] = ctx.files_with_no_color_pawns[0];
+			entry.file_info[1] = ctx.files_with_no_color_pawns[1];
+			entry.valid = true;
+		}
 	}
+
+	eval_dynamic_pawns<isTracing>(score, ctx, trace);
+	eval_backward<isTracing>(score, ctx, trace);
 }
+
 template <bool isTracing>
 void eval_iso_passed(EvaluationResult& score, EvalContext& ctx, Trace* trace) {
 	for (size_t color = 0; color < 2; color++) {
 		int ecolor = color == 0 ? 1 : 0;
 		uint64_t pawns = ctx.board.get_pieces(static_cast<Color>(color), PieceType::PAWN);
-		while (pawns)
-		{
+		while (pawns) {
 			int pawn_square = get_lsb(pawns);
 			int file_index = pawn_square % 8;
-			int rank_index = color == rank(pawn_square);
 			int bucket = PASSED_PAWN_BUCKET[color == 0 ? pawn_square : flip_square(pawn_square)];
-			if ((ctx.board.get_pieces(static_cast<Color>(ecolor), PieceType::PAWN) & PASSED_PAWN_MASK[color][pawn_square]) == 0)
-			{
+			if ((ctx.board.get_pieces(static_cast<Color>(ecolor), PieceType::PAWN) & PASSED_PAWN_MASK[color][pawn_square]) == 0) {
 				ctx.passed[color] |= (1ULL << pawn_square);
-				if (color == 0) {
-					addTerm<isTracing>(score, static_cast<EvalParam>(EvalParam::PASSED_PAWNS_START + bucket), 1, trace);
-				}
-				else {
-					addTerm<isTracing>(score, static_cast<EvalParam>(EvalParam::PASSED_PAWNS_START + bucket), -1, trace);
+				addTerm<isTracing>(
+					score,
+					static_cast<EvalParam>(EvalParam::PASSED_PAWNS_START + bucket),
+					color == 0 ? 1 : -1,
+					trace);
 
-				}
-				//check if passed pawn is defended
 				uint64_t defenders = get_pawn_attacks(bit64(pawn_square), static_cast<Color>(ecolor));
 				int def_count = popcount(defenders & ctx.board.get_pieces(static_cast<Color>(color), PieceType::PAWN));
-				addTerm<isTracing>(score, static_cast<EvalParam>(EvalParam::PROTECTED_PASSED_PAWNS_START + bucket), color == 0 ? def_count : -def_count, trace);
-				//check if blockated
-				int block_count = is_occupied(get_forward_square(pawn_square, static_cast<Color>(color)), ctx.board.get_all_pieces()) ? 1 : 0;
-				addTerm<isTracing>(score, static_cast<EvalParam>(EvalParam::BLOCKED_FREE_PAWN_START + bucket), color == 0 ? block_count : -block_count, trace);
-				// check if enemy king can stop it
-				if (block_count == 0) {
-					int promo_square = get_promotion_square(pawn_square, static_cast<Color>(color));
-					int enemy_king_distance_to_promo_sq = king_distance(ctx.board.get_king_square(static_cast<Color>(ecolor)), promo_square);
-					int pawn_distance_to_promo_sq = color == 0 ? 7 - rank_index : rank_index;
-					if (ctx.board.get_turn() == static_cast<Color>(ecolor)) enemy_king_distance_to_promo_sq--;
-					if (enemy_king_distance_to_promo_sq > pawn_distance_to_promo_sq) {
-						addTerm<isTracing>(score, static_cast<EvalParam>(EvalParam::CANT_REACHED_BY_ENEMY_KING_START + bucket), color == 0 ? 1 : -1, trace);
-					}
-				}
-				// Check if own king is close
-				int own_king_distance_to_pawn = king_distance(ctx.board.get_king_square(static_cast<Color>(color)), pawn_square);
-				if (own_king_distance_to_pawn <= 2) {
-					addTerm<isTracing>(score, static_cast<EvalParam>(EvalParam::OWN_KING_IS_CLOSE_START + bucket), color == 0 ? 1 : -1, trace);
-				}
-				if (own_king_distance_to_pawn >= 5) {
-					addTerm<isTracing>(score, static_cast<EvalParam>(EvalParam::OWN_KING_IS_FAR_START + bucket), color == 0 ? 1 : -1, trace);
-				}
-				//Check if Rook is behing pawn
-				uint64_t rooks = ctx.board.get_pieces(static_cast<Color>(color), PieceType::ROOK) & FORWARD_WAY_MASK[ecolor][pawn_square];
-				while (rooks) {
-					int rook_square = get_lsb(rooks);
-					if (bit64(pawn_square) & get_rook_attacks(rook_square, ctx.board.get_all_pieces())) {
-						addTerm<isTracing>(score, static_cast<EvalParam>(EvalParam::ROOK_BEHIND_FREE_PAWN_START + bucket), color == 0 ? 1 : -1, trace);
-						break;
-					}
-					rooks &= rooks - 1;
-				}
-				//Check if Opponent Rook is behind pawn
-				uint64_t op_rooks = ctx.board.get_pieces(static_cast<Color>(ecolor), PieceType::ROOK) & FORWARD_WAY_MASK[ecolor][pawn_square];
-				while (op_rooks) {
-					int rook_square = get_lsb(op_rooks);
-					if (bit64(pawn_square) & get_rook_attacks(rook_square, ctx.board.get_all_pieces())) {
-						addTerm<isTracing>(score, static_cast<EvalParam>(EvalParam::OP_ROOK_BEHIND_FREE_PAWN_START + bucket), color == 0 ? 1 : -1, trace);
-						break;
-					}
-					op_rooks &= op_rooks - 1;
-				}
-				pawns &= pawns - 1;
-				continue;
+				addTerm<isTracing>(
+					score,
+					static_cast<EvalParam>(EvalParam::PROTECTED_PASSED_PAWNS_START + bucket),
+					color == 0 ? def_count : -def_count,
+					trace);
 			}
-			if ((ctx.board.get_pieces(static_cast<Color>(color), PieceType::PAWN) & ADJACENT_FILE_MASK[file_index]) == 0)
-			{
+			else if ((ctx.board.get_pieces(static_cast<Color>(color), PieceType::PAWN) & ADJACENT_FILE_MASK[file_index]) == 0) {
 				ctx.isolated[color] |= (1ULL << pawn_square);
-				int bucket = ISOLATED_PAWN_BUCKET[color == 0 ? pawn_square : flip_square(pawn_square)];
-				if (is_occupied(get_forward_square(pawn_square, static_cast<Color>(color)), ctx.board.get_all_pieces()))
-					addTerm<isTracing>(score, static_cast<EvalParam>(EvalParam::BLOCKED_ISOLANI_START + bucket), color == 0 ? 1 : -1, trace);
-				else
-					addTerm<isTracing>(score, static_cast<EvalParam>(EvalParam::ISOLANI_START + bucket), color == 0 ? 1 : -1, trace);
-				uint64_t defends = ctx.get_attacks(static_cast<Color>(color)) & bit64(pawn_square);
-				if (defends != 0) {
-					addTerm<isTracing>(score, static_cast<EvalParam>(EvalParam::PROTECTED_PASSED_PAWNS_START + bucket), color == 0 ? 1 : -1, trace);
-				}
-
 			}
 			pawns &= pawns - 1;
+		}
+	}
+}
+
+template <bool isTracing>
+void eval_dynamic_pawns(EvaluationResult& score, EvalContext& ctx, Trace* trace) {
+	for (size_t color = 0; color < 2; color++) {
+		const Color pawn_color = static_cast<Color>(color);
+		const int ecolor = color == 0 ? 1 : 0;
+		const int sign = color == 0 ? 1 : -1;
+		uint64_t passed = ctx.passed[color];
+
+		while (passed) {
+			const int pawn_square = get_lsb(passed);
+			const int rank_index = rank(pawn_square);
+			const int bucket = PASSED_PAWN_BUCKET[color == 0 ? pawn_square : flip_square(pawn_square)];
+			const int forward_square = get_forward_square(pawn_square, pawn_color);
+			const int block_count = is_occupied(forward_square, ctx.board.get_all_pieces()) ? 1 : 0;
+
+			addTerm<isTracing>(
+				score,
+				static_cast<EvalParam>(EvalParam::BLOCKED_FREE_PAWN_START + bucket),
+				sign * block_count,
+				trace);
+
+			if (block_count == 0) {
+				const int promo_square = get_promotion_square(pawn_square, pawn_color);
+				int enemy_king_distance = king_distance(
+					ctx.board.get_king_square(static_cast<Color>(ecolor)),
+					promo_square);
+				const int pawn_distance = color == 0 ? 7 - rank_index : rank_index;
+				if (ctx.board.get_turn() == static_cast<Color>(ecolor)) {
+					enemy_king_distance--;
+				}
+				if (enemy_king_distance > pawn_distance) {
+					addTerm<isTracing>(
+						score,
+						static_cast<EvalParam>(EvalParam::CANT_REACHED_BY_ENEMY_KING_START + bucket),
+						sign,
+						trace);
+				}
+			}
+
+			const int own_king_distance = king_distance(
+				ctx.board.get_king_square(pawn_color),
+				pawn_square);
+			if (own_king_distance <= 2) {
+				addTerm<isTracing>(
+					score,
+					static_cast<EvalParam>(EvalParam::OWN_KING_IS_CLOSE_START + bucket),
+					sign,
+					trace);
+			}
+			if (own_king_distance >= 5) {
+				addTerm<isTracing>(
+					score,
+					static_cast<EvalParam>(EvalParam::OWN_KING_IS_FAR_START + bucket),
+					sign,
+					trace);
+			}
+
+			uint64_t rooks = ctx.board.get_pieces(pawn_color, PieceType::ROOK)
+				& FORWARD_WAY_MASK[ecolor][pawn_square];
+			while (rooks) {
+				const int rook_square = get_lsb(rooks);
+				if (bit64(pawn_square) & get_rook_attacks(rook_square, ctx.board.get_all_pieces())) {
+					addTerm<isTracing>(
+						score,
+						static_cast<EvalParam>(EvalParam::ROOK_BEHIND_FREE_PAWN_START + bucket),
+						sign,
+						trace);
+					break;
+				}
+				rooks &= rooks - 1;
+			}
+
+			uint64_t op_rooks = ctx.board.get_pieces(static_cast<Color>(ecolor), PieceType::ROOK)
+				& FORWARD_WAY_MASK[ecolor][pawn_square];
+			while (op_rooks) {
+				const int rook_square = get_lsb(op_rooks);
+				if (bit64(pawn_square) & get_rook_attacks(rook_square, ctx.board.get_all_pieces())) {
+					addTerm<isTracing>(
+						score,
+						static_cast<EvalParam>(EvalParam::OP_ROOK_BEHIND_FREE_PAWN_START + bucket),
+						sign,
+						trace);
+					break;
+				}
+				op_rooks &= op_rooks - 1;
+			}
+
+			passed &= passed - 1;
+		}
+
+		uint64_t isolated = ctx.isolated[color];
+		while (isolated) {
+			const int pawn_square = get_lsb(isolated);
+			const int bucket = ISOLATED_PAWN_BUCKET[color == 0 ? pawn_square : flip_square(pawn_square)];
+			const bool blocked = is_occupied(
+				get_forward_square(pawn_square, pawn_color),
+				ctx.board.get_all_pieces());
+
+			addTerm<isTracing>(
+				score,
+				static_cast<EvalParam>(
+					(blocked ? EvalParam::BLOCKED_ISOLANI_START : EvalParam::ISOLANI_START)
+					+ bucket),
+				sign,
+				trace);
+
+			if (is_square_defended_by(ctx, pawn_color, pawn_square)) {
+				addTerm<isTracing>(
+					score,
+					static_cast<EvalParam>(EvalParam::PROTECTED_ISOLANI_START + bucket),
+					sign,
+					trace);
+			}
+
+			isolated &= isolated - 1;
 		}
 	}
 }
@@ -191,7 +300,6 @@ void eval_backward(EvaluationResult& score, EvalContext& ctx, Trace* trace) {
 		while (pawns)
 		{
 			int pawn_square = get_lsb(pawns);
-			int file_index = pawn_square % 8;
 			int forward_square = color == to_int(Color::WHITE) ? pawn_square + 8 : pawn_square - 8;
 
 			if (forward_square >= 0 && forward_square < 64) {
@@ -289,7 +397,7 @@ void eval_king_safety(EvaluationResult& score, const EvalContext& ctx, Trace* tr
 	int op_pawns_in_small_mask = 0;
 	int op_pawns_in_big_mask = 0;
 	int king_escape_squares[3] = { 0 };
-	int king_tropism[7] = { 0 };
+	int king_tropism[6] = { 0 };
 	int mobility_penalty = 0;
 	for (size_t color = 0; color < 2; color++) {
 		int king_file = file(king_squares[color]);
@@ -507,6 +615,7 @@ void eval_king_safety(EvaluationResult& score, const EvalContext& ctx, Trace* tr
 		uint64_t op_all_attacks = op_piece_attacks[to_int(PieceType::QUEEN)] | op_piece_attacks[to_int(PieceType::ROOK)] |
 			op_piece_attacks[to_int(PieceType::BISHOP)] | op_piece_attacks[to_int(PieceType::KNIGHT)] |
 			op_piece_attacks[to_int(PieceType::PAWN)] | op_piece_attacks[to_int(PieceType::KING)];
+		ctx.set_attacks(static_cast<Color>(op_color), op_all_attacks);
 		uint64_t small_mask = SMALL_KING_ZONE[king_squares[color]];
 		uint64_t large_mask = KING_ZONE[king_squares[color]] & ~small_mask;
 		int count = popcount(op_all_attacks & small_mask);
@@ -542,8 +651,16 @@ void eval_king_safety(EvaluationResult& score, const EvalContext& ctx, Trace* tr
 		king_escape_squares[king_escape] += color == 0 ? 1 : -1;
 		uint64_t queens = ctx.get_pieces(op_color, PieceType::QUEEN);
 		if (queens != 0) {
-			int king_queen_distance = king_distance(king_squares[color], get_lsb(queens)) - 1;
-			king_tropism[king_queen_distance] += color == 0 ? 1 : -1;
+			int nearest_queen_distance = 7;
+			while (queens) {
+				const int queen_square = get_lsb(queens);
+				nearest_queen_distance = std::min(
+					nearest_queen_distance,
+					king_distance(king_squares[color], queen_square));
+				queens &= queens - 1;
+			}
+			const int tropism_bucket = std::clamp(nearest_queen_distance - 1, 0, 5);
+			king_tropism[tropism_bucket] += color == 0 ? 1 : -1;
 		}
 		int king_mobility = popcount(get_queen_attacks(king_squares[color], ctx.get_all_pieces()));
 		mobility_penalty += color == 0 ? king_mobility : -king_mobility;
@@ -567,8 +684,13 @@ void eval_king_safety(EvaluationResult& score, const EvalContext& ctx, Trace* tr
 	addTerm<isTracing>(score, EvalParam::OTHER_DEF_COUNT_NO_PAWNS_START, other_def_count_no_pawns[0], trace);
 	addTerm<isTracing>(score, static_cast<EvalParam>(EvalParam::OTHER_DEF_COUNT_NO_PAWNS_START + 1), other_def_count_no_pawns[1], trace);
 	addTerm<isTracing>(score, EvalParam::OTHER_DEF_COUNT_NO_PAWNS_END, other_def_count_no_pawns[2], trace);
-	addTerm<isTracing>(score, EvalParam::OTHER_DEF_COUNT_WITH_PAWNS_START, other_def_count_with_pawns[0], trace);
-	addTerm<isTracing>(score, EvalParam::OTHER_DEF_COUNT_WITH_PAWNS_END, other_def_count_with_pawns[1], trace);
+	for (int i = 0; i < 3; i++) {
+		addTerm<isTracing>(
+			score,
+			static_cast<EvalParam>(EvalParam::OTHER_DEF_COUNT_WITH_PAWNS_START + i),
+			other_def_count_with_pawns[i],
+			trace);
+	}
 	addTerm<isTracing>(score, EvalParam::RIGHT_DEF_QUEEN_SIDE_SQUARE_WITH_QB, right_def_queen_side_square_with_qb, trace);
 	addTerm<isTracing>(score, EvalParam::RIGHT_DEF_QUEEN_SIDE_SQUARE_WITHOUT_QB, right_def_queen_side_square_without_qb, trace);
 	addTerm<isTracing>(score, EvalParam::LEFT_DEF_QUEEN_SIDE_SQUARE_WITH_QB, left_def_queen_side_square_with_qb, trace);
@@ -584,20 +706,17 @@ void eval_king_safety(EvaluationResult& score, const EvalContext& ctx, Trace* tr
 	addTerm<isTracing>(score, EvalParam::RIGHT_DEF_KING_SIDE_SQUARE_WITHOUT_QB, right_def_king_side_square_without_qb, trace);
 	addTerm<isTracing>(score, EvalParam::QUEEN_SIDE_FORWARD_SQUARE, queen_side_forward_square, trace);
 	addTerm<isTracing>(score, EvalParam::KING_SIDE_FORWARD_SQUARE, king_side_forward_square, trace);
-	bool in_check = true;
-	if (!in_check) {
-		for (int i = 0; i < 8; i++) {
-			addTerm<isTracing>(score, static_cast<EvalParam>(EvalParam::SMALL_ATTACK_COUNT_START + i), small_attack_count[i], trace);
-		}
-		for (int i = 0; i < 13; i++) {
-			addTerm<isTracing>(score, static_cast<EvalParam>(EvalParam::BIG_ATTACK_COUNT_START + i), big_attack_count[i], trace);
-		}
-		for (int i = 0; i < 6; i++) {
-			addTerm<isTracing>(score, static_cast<EvalParam>(EvalParam::PIECE_ATTACKING_START + i), piece_attacking[i], trace);
-		}
-		for (int i = 0; i < 5; i++) {
-			addTerm<isTracing>(score, static_cast<EvalParam>(EvalParam::DISTINCT_PIECES_ATTACKING_START + i), distinct_pieces_attacking[i], trace);
-		}
+	for (int i = 0; i < 8; i++) {
+		addTerm<isTracing>(score, static_cast<EvalParam>(EvalParam::SMALL_ATTACK_COUNT_START + i), small_attack_count[i], trace);
+	}
+	for (int i = 0; i < 13; i++) {
+		addTerm<isTracing>(score, static_cast<EvalParam>(EvalParam::BIG_ATTACK_COUNT_START + i), big_attack_count[i], trace);
+	}
+	for (int i = 0; i < 6; i++) {
+		addTerm<isTracing>(score, static_cast<EvalParam>(EvalParam::PIECE_ATTACKING_START + i), piece_attacking[i], trace);
+	}
+	for (int i = 0; i < 5; i++) {
+		addTerm<isTracing>(score, static_cast<EvalParam>(EvalParam::DISTINCT_PIECES_ATTACKING_START + i), distinct_pieces_attacking[i], trace);
 	}
 	addTerm<isTracing>(score, EvalParam::WEAK_PAWNS_AROUND_SMALL_KING, weak_pawns_around_small_king, trace);
 	addTerm<isTracing>(score, EvalParam::WEAK_PAWNS_AROUND_BIG_KING, weak_pawns_around_big_king, trace);
@@ -606,10 +725,8 @@ void eval_king_safety(EvaluationResult& score, const EvalContext& ctx, Trace* tr
 	for (int i = 0; i < 3; i++) {
 		addTerm<isTracing>(score, static_cast<EvalParam>(EvalParam::KING_ESCAPE_SQUARES_START + i), king_escape_squares[i], trace);
 	}
-	if (!in_check) {
-		for (int i = 0; i < 6; i++) {
-			addTerm<isTracing>(score, static_cast<EvalParam>(EvalParam::KING_TROPISM_START + i), king_tropism[i + 1], trace);
-		}
+	for (int i = 0; i < 6; i++) {
+		addTerm<isTracing>(score, static_cast<EvalParam>(EvalParam::KING_TROPISM_START + i), king_tropism[i], trace);
 	}
 	addTerm<isTracing>(score, EvalParam::MOBILITY_PENALTY, mobility_penalty, trace);
 }

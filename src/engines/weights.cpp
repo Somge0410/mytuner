@@ -146,6 +146,7 @@ EvaluationResult EvalWeights[PARAM_COUNT] = {
         { 24, -23 },      // OTHER_DEF_COUNT_NO_PAWNS_START+2
         { 18, -2 },       // OTHER_DEF_COUNT_WITH_PAWNS_START+0
         { 6, -16 },       // OTHER_DEF_COUNT_WITH_PAWNS_START+1
+        { 0, 0 },         // OTHER_DEF_COUNT_WITH_PAWNS_START+2 (retune required)
         { 62, -32 },      // RIGHT_DEF_QUEEN_SIDE_SQUARE_WITH_QB
         { -4, -9 },       // RIGHT_DEF_QUEEN_SIDE_SQUARE_WITHOUT_QB
         { 45, -30 },      // LEFT_DEF_QUEEN_SIDE_SQUARE_WITH_QB
