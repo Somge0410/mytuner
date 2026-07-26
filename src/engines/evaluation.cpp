@@ -30,20 +30,51 @@ void classify_pawns(EvalContext& ctx) {
 	}
 }
 
-bool is_square_defended_by(const EvalContext& ctx, Color color, int square) {
+bool is_square_attacked_by(
+	const EvalContext& ctx,
+	Color color,
+	int square,
+	uint64_t occupied,
+	bool include_pawns = true) {
 	const uint64_t own_pawns = ctx.get_pieces(color, PieceType::PAWN);
 	const uint64_t own_knights = ctx.get_pieces(color, PieceType::KNIGHT);
 	const uint64_t own_bishops = ctx.get_pieces(color, PieceType::BISHOP);
 	const uint64_t own_rooks = ctx.get_pieces(color, PieceType::ROOK);
 	const uint64_t own_queens = ctx.get_pieces(color, PieceType::QUEEN);
 	const uint64_t own_king = ctx.get_pieces(color, PieceType::KING);
+	const uint64_t diagonal_sliders = own_bishops | own_queens;
+	const uint64_t orthogonal_sliders = own_rooks | own_queens;
 	const Color opposite = flip_color(color);
 
-	return (get_pawn_attacks(bit64(square), opposite) & own_pawns) != 0
+	return (include_pawns && (get_pawn_attacks(bit64(square), opposite) & own_pawns) != 0)
 		|| (get_knight_attacks(square) & own_knights) != 0
-		|| (get_bishop_attacks(square, ctx.get_all_pieces()) & (own_bishops | own_queens)) != 0
-		|| (get_rook_attacks(square, ctx.get_all_pieces()) & (own_rooks | own_queens)) != 0
+		|| (diagonal_sliders != 0
+			&& (get_bishop_attacks(square, occupied) & diagonal_sliders) != 0)
+		|| (orthogonal_sliders != 0
+			&& (get_rook_attacks(square, occupied) & orthogonal_sliders) != 0)
 		|| (get_king_attacks(square) & own_king) != 0;
+}
+
+bool has_connected_passer(const EvalContext& ctx, int color, int pawn_square) {
+	const uint64_t adjacent_passers =
+		ctx.passed[color] & ADJACENT_FILE_MASK[file(pawn_square)];
+	const int pawn_rank = rank(pawn_square);
+	uint64_t connected_ranks = RANK_MASK[pawn_rank];
+	if (pawn_rank > 0) {
+		connected_ranks |= RANK_MASK[pawn_rank - 1];
+	}
+	if (pawn_rank < 7) {
+		connected_ranks |= RANK_MASK[pawn_rank + 1];
+	}
+	return (adjacent_passers & connected_ranks) != 0;
+}
+
+bool has_clear_promotion_path(
+	const EvalContext& ctx,
+	Color color,
+	int pawn_square) {
+	return (ctx.get_all_pieces()
+		& FORWARD_WAY_MASK[to_int(color)][pawn_square]) == 0;
 }
 }
 
@@ -139,33 +170,40 @@ void eval_pawns(EvaluationResult& score, EvalContext& ctx, Trace* trace) {
 
 template <bool isTracing>
 void eval_iso_passed(EvaluationResult& score, EvalContext& ctx, Trace* trace) {
-	for (size_t color = 0; color < 2; color++) {
-		int ecolor = color == 0 ? 1 : 0;
-		uint64_t pawns = ctx.board.get_pieces(static_cast<Color>(color), PieceType::PAWN);
-		while (pawns) {
-			int pawn_square = get_lsb(pawns);
-			int file_index = pawn_square % 8;
-			int bucket = PASSED_PAWN_BUCKET[color == 0 ? pawn_square : flip_square(pawn_square)];
-			if ((ctx.board.get_pieces(static_cast<Color>(ecolor), PieceType::PAWN) & PASSED_PAWN_MASK[color][pawn_square]) == 0) {
-				ctx.passed[color] |= (1ULL << pawn_square);
-				addTerm<isTracing>(
-					score,
-					static_cast<EvalParam>(EvalParam::PASSED_PAWNS_START + bucket),
-					color == 0 ? 1 : -1,
-					trace);
+	// This entire score is safe to cache: it depends only on pawn placement.
+	classify_pawns(ctx);
+	for (int color = 0; color < 2; color++) {
+		const int ecolor = color == 0 ? 1 : 0;
+		const int sign = color == 0 ? 1 : -1;
+		uint64_t passed = ctx.passed[color];
+		while (passed) {
+			const int pawn_square = get_lsb(passed);
+			const int bucket =
+				PASSED_PAWN_BUCKET[color == 0 ? pawn_square : flip_square(pawn_square)];
+			addTerm<isTracing>(
+				score,
+				static_cast<EvalParam>(EvalParam::PASSED_PAWNS_START + bucket),
+				sign,
+				trace);
 
-				uint64_t defenders = get_pawn_attacks(bit64(pawn_square), static_cast<Color>(ecolor));
-				int def_count = popcount(defenders & ctx.board.get_pieces(static_cast<Color>(color), PieceType::PAWN));
+			const uint64_t defenders =
+				get_pawn_attacks(bit64(pawn_square), static_cast<Color>(ecolor));
+			const int defender_count = popcount(
+				defenders & ctx.get_pieces(color, PieceType::PAWN));
+			addTerm<isTracing>(
+				score,
+				static_cast<EvalParam>(EvalParam::PROTECTED_PASSED_PAWNS_START + bucket),
+				sign * defender_count,
+				trace);
+
+			if (has_connected_passer(ctx, color, pawn_square)) {
 				addTerm<isTracing>(
 					score,
-					static_cast<EvalParam>(EvalParam::PROTECTED_PASSED_PAWNS_START + bucket),
-					color == 0 ? def_count : -def_count,
+					static_cast<EvalParam>(EvalParam::CONNECTED_PASSED_PAWNS_START + bucket),
+					sign,
 					trace);
 			}
-			else if ((ctx.board.get_pieces(static_cast<Color>(color), PieceType::PAWN) & ADJACENT_FILE_MASK[file_index]) == 0) {
-				ctx.isolated[color] |= (1ULL << pawn_square);
-			}
-			pawns &= pawns - 1;
+			passed &= passed - 1;
 		}
 	}
 }
@@ -191,7 +229,43 @@ void eval_dynamic_pawns(EvaluationResult& score, EvalContext& ctx, Trace* trace)
 				sign * block_count,
 				trace);
 
+			if (is_square_attacked_by(
+				ctx,
+				pawn_color,
+				pawn_square,
+				ctx.get_all_pieces(),
+				false)) {
+				addTerm<isTracing>(
+					score,
+					static_cast<EvalParam>(EvalParam::PIECE_SUPPORTED_PASSED_PAWNS_START + bucket),
+					sign,
+					trace);
+			}
+
 			if (block_count == 0) {
+				const uint64_t advanced_occupancy =
+					(ctx.get_all_pieces() & ~bit64(pawn_square))
+					| bit64(forward_square);
+				if (!is_square_attacked_by(
+					ctx,
+					static_cast<Color>(ecolor),
+					forward_square,
+					advanced_occupancy)) {
+					addTerm<isTracing>(
+						score,
+						static_cast<EvalParam>(EvalParam::SAFE_ADVANCE_PASSED_PAWNS_START + bucket),
+						sign,
+						trace);
+				}
+
+				if (has_clear_promotion_path(ctx, pawn_color, pawn_square)) {
+					addTerm<isTracing>(
+						score,
+						static_cast<EvalParam>(EvalParam::CLEAR_PATH_PASSED_PAWNS_START + bucket),
+						sign,
+						trace);
+				}
+
 				const int promo_square = get_promotion_square(pawn_square, pawn_color);
 				int enemy_king_distance = king_distance(
 					ctx.board.get_king_square(static_cast<Color>(ecolor)),
@@ -276,7 +350,11 @@ void eval_dynamic_pawns(EvaluationResult& score, EvalContext& ctx, Trace* trace)
 				sign,
 				trace);
 
-			if (is_square_defended_by(ctx, pawn_color, pawn_square)) {
+			if (is_square_attacked_by(
+				ctx,
+				pawn_color,
+				pawn_square,
+				ctx.get_all_pieces())) {
 				addTerm<isTracing>(
 					score,
 					static_cast<EvalParam>(EvalParam::PROTECTED_ISOLANI_START + bucket),

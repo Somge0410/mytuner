@@ -226,4 +226,24 @@ EvaluationResult EvalWeights[PARAM_COUNT] = {
         { 76, 6 },        // BISHOP_OUTPOST_WITH_OPPOSITE_BISHOP
         { 59, 19 },       // KNIGHT_OUTPOST_NO_OPPOSITE_BISHOP
         { 45, 28 },       // KNIGHT_OUTPOST_WITH_OPPOSITE_BISHOP
+            // CONNECTED_PASSED_PAWNS_START+0 (retune required)
+        { 0, 0 }, { 0, 0 }, { 0, 0 }, { 0, 0 },
+        { 0, 0 }, { 0, 0 }, { 0, 0 }, { 0, 0 },
+        { 0, 0 }, { 0, 0 }, { 0, 0 }, { 0, 0 },
+        { 0, 0 }, { 0, 0 }, { 0, 0 }, { 0, 0 },
+            // PIECE_SUPPORTED_PASSED_PAWNS_START+0 (retune required)
+        { 0, 0 }, { 0, 0 }, { 0, 0 }, { 0, 0 },
+        { 0, 0 }, { 0, 0 }, { 0, 0 }, { 0, 0 },
+        { 0, 0 }, { 0, 0 }, { 0, 0 }, { 0, 0 },
+        { 0, 0 }, { 0, 0 }, { 0, 0 }, { 0, 0 },
+            // SAFE_ADVANCE_PASSED_PAWNS_START+0 (retune required)
+        { 0, 0 }, { 0, 0 }, { 0, 0 }, { 0, 0 },
+        { 0, 0 }, { 0, 0 }, { 0, 0 }, { 0, 0 },
+        { 0, 0 }, { 0, 0 }, { 0, 0 }, { 0, 0 },
+        { 0, 0 }, { 0, 0 }, { 0, 0 }, { 0, 0 },
+            // CLEAR_PATH_PASSED_PAWNS_START+0 (retune required)
+        { 0, 0 }, { 0, 0 }, { 0, 0 }, { 0, 0 },
+        { 0, 0 }, { 0, 0 }, { 0, 0 }, { 0, 0 },
+        { 0, 0 }, { 0, 0 }, { 0, 0 }, { 0, 0 },
+        { 0, 0 }, { 0, 0 }, { 0, 0 }, { 0, 0 },
 };

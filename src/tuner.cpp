@@ -333,6 +333,10 @@ static string get_parameter_name(int index)
     if (index >= KING_ESCAPE_SQUARES_START && index <= KING_ESCAPE_SQUARES_END) return "KING_ESCAPE_SQUARES_START+" + std::to_string(index - KING_ESCAPE_SQUARES_START);
     if (index >= KING_TROPISM_START && index <= KING_TROPISM_END) return "KING_TROPISM_START+" + std::to_string(index - KING_TROPISM_START);
     if (index >= MOBILITY_START && index <= MOBILITY_END) return "MOBILITY_START+" + std::to_string(index - MOBILITY_START);
+    if (index >= CONNECTED_PASSED_PAWNS_START && index <= CONNECTED_PASSED_PAWNS_END) return "CONNECTED_PASSED_PAWNS_START+" + std::to_string(index - CONNECTED_PASSED_PAWNS_START);
+    if (index >= PIECE_SUPPORTED_PASSED_PAWNS_START && index <= PIECE_SUPPORTED_PASSED_PAWNS_END) return "PIECE_SUPPORTED_PASSED_PAWNS_START+" + std::to_string(index - PIECE_SUPPORTED_PASSED_PAWNS_START);
+    if (index >= SAFE_ADVANCE_PASSED_PAWNS_START && index <= SAFE_ADVANCE_PASSED_PAWNS_END) return "SAFE_ADVANCE_PASSED_PAWNS_START+" + std::to_string(index - SAFE_ADVANCE_PASSED_PAWNS_START);
+    if (index >= CLEAR_PATH_PASSED_PAWNS_START && index <= CLEAR_PATH_PASSED_PAWNS_END) return "CLEAR_PATH_PASSED_PAWNS_START+" + std::to_string(index - CLEAR_PATH_PASSED_PAWNS_START);
 
     return "PARAM_" + std::to_string(index);
 }
